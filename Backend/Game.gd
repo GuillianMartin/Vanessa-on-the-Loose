@@ -124,6 +124,7 @@ func _show_menu(final_score: int = -1) -> void:
 		play_button.text = "Play"
 
 func _start_round() -> void:
+	Input.set_custom_mouse_cursor(preload("res://.godot/imported/Swatter.png-5bbb3ea1286533ace2f2936fa798c46f.ctex"), Input.CURSOR_ARROW, Vector2(64, 64))
 	score = 0
 	flies_left = ROUND_FLY_COUNT
 	round_active = true
