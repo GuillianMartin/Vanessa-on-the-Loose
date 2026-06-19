@@ -164,6 +164,7 @@ func _show_loss() -> void:
 	play_button.text = "Try Again"
 
 func _start_round() -> void:
+	Input.set_custom_mouse_cursor(preload("res://assets/Swatter.png"), Input.CURSOR_ARROW, Vector2(64, 64))
 	score = 0
 	flies_left = ROUND_FLY_COUNT
 	round_active = true

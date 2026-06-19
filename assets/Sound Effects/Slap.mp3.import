@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://d14x4vas85qj8"
+path="res://.godot/imported/Slap.mp3-02fd66c1b1877d9ee762e48e55d168df.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/Slap.mp3"
+dest_files=["res://.godot/imported/Slap.mp3-02fd66c1b1877d9ee762e48e55d168df.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

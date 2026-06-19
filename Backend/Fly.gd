@@ -1,5 +1,7 @@
 extends Area2D
 
+@onready var sfx_swat: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_swat") as AudioStreamPlayer2D
+
 signal died(fly: Area2D)
 signal spawn_requested(position: Vector2)
 
@@ -187,6 +189,8 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 func take_damage(amount: int) -> void:
 	health -= amount
 	click_streak += 1
+	if sfx_swat != null:
+		sfx_swat.play()
 	_update_health_bar()
 
 	if health <= 0:
