@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dqt8gp57mr8e2"]
 
-[ext_resource type="Texture2D" uid="uid://dhb7rvpiuqbcj" path="res://assets/Flies/dafualt_fly.png" id="1_qk0kf"]
+[ext_resource type="Texture2D" uid="uid://dhb7rvpiuqbcj" path="res://assets/Flies/default_fly.png" id="1_qk0kf"]
 [ext_resource type="Script" uid="uid://bwl0c57baweg7" path="res://Backend/Fly.gd" id="2_qk0kf"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_qk0kf"]

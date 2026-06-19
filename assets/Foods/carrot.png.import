@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dhb7rvpiuqbcj"
-path="res://.godot/imported/dafualt_fly.png-93a5666ec9a03820260477e016b361f2.ctex"
+uid="uid://drop5wpdm51s3"
+path="res://.godot/imported/carrot.png-aa27271142ef2fad4648217cf709a688.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Flies/dafualt_fly.png"
-dest_files=["res://.godot/imported/dafualt_fly.png-93a5666ec9a03820260477e016b361f2.ctex"]
+source_file="res://assets/Foods/carrot.png"
+dest_files=["res://.godot/imported/carrot.png-aa27271142ef2fad4648217cf709a688.ctex"]
 
 [params]
 

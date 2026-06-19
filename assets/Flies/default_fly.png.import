@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://86jbnival6l3"
-path="res://.godot/imported/temporary_background.png-f22020aacee8edae58085ac635e37e3d.ctex"
+uid="uid://8y4skcw2nieh"
+path="res://.godot/imported/default_fly.png-e1fb8b044e90171523f6ab9fec55b485.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background/temporary_background.png"
-dest_files=["res://.godot/imported/temporary_background.png-f22020aacee8edae58085ac635e37e3d.ctex"]
+source_file="res://assets/Flies/default_fly.png"
+dest_files=["res://.godot/imported/default_fly.png-e1fb8b044e90171523f6ab9fec55b485.ctex"]
 
 [params]
 
