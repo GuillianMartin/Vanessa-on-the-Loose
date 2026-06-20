@@ -3,8 +3,8 @@
 [ext_resource type="Texture2D" uid="uid://86jbnival6l3" path="res://assets/background/temporary_background.png" id="1_fpveb"]
 [ext_resource type="Script" uid="uid://dgpscocihbfeo" path="res://Backend/Game.gd" id="1_qn0m5"]
 [ext_resource type="Script" uid="uid://d3t4vdpevsgtp" path="res://Backend/container.gd" id="3_cf3yn"]
-[ext_resource type="Texture2D" uid="uid://d3c087oqk2oc1" path="res://assets/background/container.png" id="4_hby63"]
 [ext_resource type="AudioStream" uid="uid://d14x4vas85qj8" path="res://assets/Sound Effects/Slap.mp3" id="3_qn0m5"]
+[ext_resource type="Texture2D" uid="uid://d3c087oqk2oc1" path="res://assets/background/container.png" id="4_hby63"]
 
 [node name="Game" type="Node2D" unique_id=1851167090]
 script = ExtResource("1_qn0m5")
