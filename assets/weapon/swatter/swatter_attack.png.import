@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://86jbnival6l3"
-path="res://.godot/imported/temporary_background.png-f22020aacee8edae58085ac635e37e3d.ctex"
+uid="uid://d2eo1w7jw3gvg"
+path="res://.godot/imported/swatter_attack.png-294df6cfc84c0593c0a8861ed8e68bc9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background/temporary_background.png"
-dest_files=["res://.godot/imported/temporary_background.png-f22020aacee8edae58085ac635e37e3d.ctex"]
+source_file="res://assets/weapon/swatter/swatter_attack.png"
+dest_files=["res://.godot/imported/swatter_attack.png-294df6cfc84c0593c0a8861ed8e68bc9.ctex"]
 
 [params]
 

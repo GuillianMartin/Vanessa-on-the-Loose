@@ -2,17 +2,17 @@ extends Node2D
 
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
 const FOOD_SCRIPT := preload("res://Backend/Food_behavior.gd")
-const FOOD_TEXTURES := [
-	preload("res://assets/Foods/meat1.png"),
-	preload("res://assets/Foods/carrot.png"),
-	preload("res://assets/Foods/cabbage.png"),
-]
-const ROUND_FLY_COUNT := 8
+const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
+const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
+const ROUND_FLY_COUNT := 20
 const ROUND_FOOD_COUNT := 10
 const TOP_SAFE_AREA := 72.0
 const EDGE_PADDING := 70.0
-const FOOD_MIN_DISTANCE := 104.0
+const FOOD_GAP := 10.0
 const FOOD_PLACEMENT_ATTEMPTS := 500
+const SWATTER_ATTACK_FRAMES := 4
+const SWATTER_ATTACK_FRAME_TIME := 0.045
+const SWATTER_OFFSET := Vector2(34, 34)
 
 var score := 0
 var flies_left := 0
@@ -29,13 +29,28 @@ var flies_label: Label
 var menu_title: Label
 var result_label: Label
 var play_button: Button
+var swatter_layer: CanvasLayer
+var swatter_sprite: Sprite2D
+var swatter_attack_timer := 0.0
+var swatter_frame_timer := 0.0
 
 func _ready() -> void:
 	randomize()
 	_build_game_nodes()
+	_build_swatter()
 	_build_hud()
 	_build_menu()
 	_show_menu()
+
+func _process(delta: float) -> void:
+	_update_swatter(delta)
+
+func _input(event: InputEvent) -> void:
+	if not round_active:
+		return
+
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_start_swatter_attack()
 
 func _build_game_nodes() -> void:
 	var background := get_node_or_null("Sprite2D") as Sprite2D
@@ -56,6 +71,19 @@ func _build_game_nodes() -> void:
 	fly_container.name = "Flies"
 	fly_container.z_index = 20
 	add_child(fly_container)
+
+func _build_swatter() -> void:
+	swatter_layer = CanvasLayer.new()
+	swatter_layer.name = "Swatter"
+	swatter_layer.layer = 100
+	add_child(swatter_layer)
+
+	swatter_sprite = Sprite2D.new()
+	swatter_sprite.texture = SWATTER_DEFAULT_TEXTURE
+	swatter_sprite.centered = false
+	swatter_sprite.offset = -SWATTER_OFFSET
+	swatter_sprite.visible = false
+	swatter_layer.add_child(swatter_sprite)
 
 func _build_hud() -> void:
 	hud_layer = CanvasLayer.new()
@@ -136,6 +164,7 @@ func _build_menu() -> void:
 
 func _show_menu(final_score: int = -1) -> void:
 	round_active = false
+	_set_swatter_active(false)
 	menu_layer.visible = true
 	hud_layer.visible = false
 	fly_container.visible = false
@@ -153,6 +182,7 @@ func _show_menu(final_score: int = -1) -> void:
 
 func _show_loss() -> void:
 	round_active = false
+	_set_swatter_active(false)
 	menu_layer.visible = true
 	hud_layer.visible = false
 	fly_container.visible = false
@@ -164,10 +194,10 @@ func _show_loss() -> void:
 	play_button.text = "Try Again"
 
 func _start_round() -> void:
-	Input.set_custom_mouse_cursor(preload("res://assets/Swatter.png"), Input.CURSOR_ARROW, Vector2(64, 64))
 	score = 0
 	flies_left = ROUND_FLY_COUNT
 	round_active = true
+	_set_swatter_active(true)
 	menu_layer.visible = false
 	hud_layer.visible = true
 	food_container.visible = true
@@ -211,7 +241,7 @@ func _spawn_fly(spawn_position: Vector2, bounds: Rect2, include_mother: bool, fo
 		clampf(spawn_position.x, bounds.position.x, bounds.end.x),
 		clampf(spawn_position.y, bounds.position.y, bounds.end.y)
 	)
-	var new_behavior = fly.get_mother_behavior() if force_mother else fly.get_random_behavior(include_mother)
+	var new_behavior = fly.get_forced_mother_behavior() if force_mother else fly.get_random_behavior(include_mother)
 	fly.configure(new_behavior, bounds)
 	fly.died.connect(_on_fly_died)
 	fly.spawn_requested.connect(_on_fly_spawn_requested)
@@ -220,22 +250,26 @@ func _spawn_fly(spawn_position: Vector2, bounds: Rect2, include_mother: bool, fo
 func _spawn_food() -> void:
 	_clear_food()
 
-	var placed_positions: Array[Vector2] = []
+	var placed_food: Array[Dictionary] = []
 	var polygon := _get_container_polygon_global()
 	if polygon.size() < 3:
 		return
 
 	for _index in range(ROUND_FOOD_COUNT):
 		var position_found := false
+		var config = FOOD_SCRIPT.get_random_config()
 		for _attempt in range(FOOD_PLACEMENT_ATTEMPTS):
-			var candidate := _get_random_point_in_polygon(polygon)
-			if _is_food_position_clear(candidate, placed_positions):
+			var candidate := _get_random_point_in_polygon(polygon, config.radius)
+			if _is_food_position_clear(candidate, config.radius, polygon, placed_food):
 				var food := FOOD_SCRIPT.new() as Node2D
 				food.position = candidate
-				food.call("configure", FOOD_TEXTURES.pick_random(), randf_range(90.0, 125.0), randf_range(0.8, 1.5))
+				food.call("configure", config)
 				food.connect("depleted", _on_food_depleted)
 				food_container.add_child(food)
-				placed_positions.append(candidate)
+				placed_food.append({
+					"position": candidate,
+					"radius": config.radius,
+				})
 				position_found = true
 				break
 
@@ -298,27 +332,101 @@ func _get_container_polygon_global() -> PackedVector2Array:
 
 	return points
 
-func _get_random_point_in_polygon(polygon: PackedVector2Array) -> Vector2:
+func _get_random_point_in_polygon(polygon: PackedVector2Array, radius: float = 0.0) -> Vector2:
 	var bounds := Rect2(polygon[0], Vector2.ZERO)
 	for point in polygon:
 		bounds = bounds.expand(point)
 
 	for _attempt in range(80):
 		var point := Vector2(
-			randf_range(bounds.position.x, bounds.end.x),
-			randf_range(bounds.position.y, bounds.end.y)
+			randf_range(bounds.position.x + radius, bounds.end.x - radius),
+			randf_range(bounds.position.y + radius, bounds.end.y - radius)
 		)
-		if Geometry2D.is_point_in_polygon(point, polygon):
+		if _is_circle_inside_polygon(point, radius, polygon):
 			return point
 
 	return bounds.get_center()
 
-func _is_food_position_clear(candidate: Vector2, placed_positions: Array[Vector2]) -> bool:
-	for placed_position in placed_positions:
-		if candidate.distance_to(placed_position) < FOOD_MIN_DISTANCE:
+func _is_food_position_clear(
+	candidate: Vector2,
+	candidate_radius: float,
+	polygon: PackedVector2Array,
+	placed_food: Array[Dictionary]
+) -> bool:
+	if not _is_circle_inside_polygon(candidate, candidate_radius, polygon):
+		return false
+
+	for placed in placed_food:
+		var placed_position: Vector2 = placed["position"]
+		var placed_radius: float = placed["radius"]
+		var minimum_distance := candidate_radius + placed_radius + FOOD_GAP
+		if candidate.distance_to(placed_position) < minimum_distance:
 			return false
 
 	return true
+
+func _is_circle_inside_polygon(center: Vector2, radius: float, polygon: PackedVector2Array) -> bool:
+	if not Geometry2D.is_point_in_polygon(center, polygon):
+		return false
+
+	if radius <= 0.0:
+		return true
+
+	for step in range(8):
+		var edge_point := center + Vector2.RIGHT.rotated(TAU * float(step) / 8.0) * radius
+		if not Geometry2D.is_point_in_polygon(edge_point, polygon):
+			return false
+
+	return true
+
+func _set_swatter_active(active: bool) -> void:
+	if swatter_sprite == null:
+		return
+
+	swatter_sprite.visible = active
+	if active:
+		Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
+		swatter_sprite.global_position = get_viewport().get_mouse_position()
+		_show_default_swatter()
+	else:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+func _update_swatter(delta: float) -> void:
+	if swatter_sprite == null or not swatter_sprite.visible:
+		return
+
+	swatter_sprite.global_position = get_viewport().get_mouse_position()
+
+	if swatter_attack_timer <= 0.0:
+		return
+
+	swatter_attack_timer -= delta
+	swatter_frame_timer -= delta
+	if swatter_frame_timer <= 0.0:
+		swatter_frame_timer = SWATTER_ATTACK_FRAME_TIME
+		swatter_sprite.frame = mini(swatter_sprite.frame + 1, SWATTER_ATTACK_FRAMES - 1)
+
+	if swatter_attack_timer <= 0.0:
+		_show_default_swatter()
+
+func _start_swatter_attack() -> void:
+	if swatter_sprite == null:
+		return
+
+	swatter_sprite.texture = SWATTER_ATTACK_TEXTURE
+	swatter_sprite.hframes = SWATTER_ATTACK_FRAMES
+	swatter_sprite.vframes = 1
+	swatter_sprite.frame = 0
+	swatter_attack_timer = SWATTER_ATTACK_FRAMES * SWATTER_ATTACK_FRAME_TIME
+	swatter_frame_timer = SWATTER_ATTACK_FRAME_TIME
+
+func _show_default_swatter() -> void:
+	swatter_sprite.texture = SWATTER_DEFAULT_TEXTURE
+	swatter_sprite.hframes = 1
+	swatter_sprite.vframes = 1
+	swatter_sprite.frame = 0
+	swatter_attack_timer = 0.0
+	swatter_frame_timer = 0.0
 
 func _get_active_food_count(excluded_food: Node = null) -> int:
 	if food_container == null:

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dqt8gp57mr8e2"]
 
-[ext_resource type="Texture2D" uid="uid://dhb7rvpiuqbcj" path="res://assets/Flies/default_fly.png" id="1_qk0kf"]
+[ext_resource type="Texture2D" uid="uid://c38mepwo75c12" path="res://assets/Flies/fly_flying.png" id="1_qk0kf"]
 [ext_resource type="Script" uid="uid://bwl0c57baweg7" path="res://Backend/Fly.gd" id="2_qk0kf"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_qk0kf"]
@@ -10,8 +10,9 @@ radius = 46.3
 script = ExtResource("2_qk0kf")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1110238688]
-scale = Vector2(0.08, 0.07)
+scale = Vector2(0.68, 0.6)
 texture = ExtResource("1_qk0kf")
+hframes = 6
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2014995770]
 shape = SubResource("CircleShape2D_qk0kf")

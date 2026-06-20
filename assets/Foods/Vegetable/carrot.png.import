@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bso6u5vgkpbqw"
-path="res://.godot/imported/Swatter.png-5bbb3ea1286533ace2f2936fa798c46f.ctex"
+uid="uid://drop5wpdm51s3"
+path="res://.godot/imported/carrot.png-97c5b38fe44b79017e59f814a64cc48c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Swatter.png"
-dest_files=["res://.godot/imported/Swatter.png-5bbb3ea1286533ace2f2936fa798c46f.ctex"]
+source_file="res://assets/Foods/Vegetable/carrot.png"
+dest_files=["res://.godot/imported/carrot.png-97c5b38fe44b79017e59f814a64cc48c.ctex"]
 
 [params]
 
@@ -36,5 +36,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=128
-detect_3d/compress_to=0
+process/size_limit=0
+detect_3d/compress_to=1
