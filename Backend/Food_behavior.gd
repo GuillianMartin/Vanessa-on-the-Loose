@@ -13,6 +13,7 @@ const TOMATO_DEFAULT_PATH := "res://assets/Foods/Vegetable/tomato/default.png"
 const TOMATO_NOTGOOD_PATH := "res://assets/Foods/Vegetable/tomato/notgood.png"
 const TOMATO_CRITICAL_PATH := "res://assets/Foods/Vegetable/tomato/critical.png"
 const FOOD_SIZE_MULT := 1.2
+const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
@@ -211,7 +212,10 @@ func _update_food_sprite(force: bool = false) -> void:
 	sprite.vframes = 1
 	sprite.frame = 0
 	critical_frame_timer = 0.0
-	_scale_sprite_to_size(config.visual_size)
+	var target_size := config.visual_size
+	if current_state == "critical":
+		target_size *= CRITICAL_SIZE_MULT
+	_scale_sprite_to_size(target_size)
 
 func _animate_critical(delta: float) -> void:
 	if current_state != "critical":

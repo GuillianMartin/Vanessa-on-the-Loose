@@ -229,6 +229,10 @@ func _keep_inside_bounds() -> void:
 
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var swatter := _get_swatter()
+		if swatter != null and not swatter.call("can_attack"):
+			return
+
 		take_damage(1)
 
 func take_damage(amount: int) -> void:
@@ -348,3 +352,10 @@ func _leave_food() -> void:
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * behavior.speed
 	_update_sprite_direction()
 	_set_flying_sprite()
+
+func _get_swatter() -> Node:
+	var swatters := get_tree().get_nodes_in_group("swatters")
+	if swatters.is_empty():
+		return null
+
+	return swatters[0]

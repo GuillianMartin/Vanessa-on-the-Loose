@@ -2,6 +2,8 @@ extends Node2D
 
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
 const FOOD_SCRIPT := preload("res://Backend/Food_behavior.gd")
+const CUSTOMER_HAND_SCRIPT := preload("res://Backend/CustomerHand.gd")
+const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 const ROUND_FLY_COUNT := 20
@@ -13,6 +15,9 @@ const FOOD_PLACEMENT_ATTEMPTS := 500
 const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
+const CUSTOMER_SPAWN_MIN_TIME := 2.2
+const CUSTOMER_SPAWN_MAX_TIME := 4.8
+const MAX_ACTIVE_CUSTOMERS := 4
 
 var score := 0
 var flies_left := 0
@@ -20,6 +25,7 @@ var round_active := false
 
 var food_container: Node2D
 var fly_container: Node2D
+var customer_container: Node2D
 var container_area: Area2D
 var container_polygon: CollisionPolygon2D
 var hud_layer: CanvasLayer
@@ -31,8 +37,12 @@ var result_label: Label
 var play_button: Button
 var swatter_layer: CanvasLayer
 var swatter_sprite: Sprite2D
+var swatter_entity: Node
+var swatter_energy_bar: ProgressBar
+var swatter_energy_label: Label
 var swatter_attack_timer := 0.0
 var swatter_frame_timer := 0.0
+var customer_spawn_timer := 0.0
 
 func _ready() -> void:
 	randomize()
@@ -44,6 +54,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_swatter(delta)
+	_update_customer_spawns(delta)
 
 func _input(event: InputEvent) -> void:
 	if not round_active:
@@ -72,7 +83,17 @@ func _build_game_nodes() -> void:
 	fly_container.z_index = 20
 	add_child(fly_container)
 
+	customer_container = Node2D.new()
+	customer_container.name = "Customers"
+	customer_container.z_index = 30
+	add_child(customer_container)
+
 func _build_swatter() -> void:
+	swatter_entity = SWATTER_SCRIPT.new()
+	swatter_entity.name = "SwatterEnergy"
+	swatter_entity.connect("energy_changed", _on_swatter_energy_changed)
+	add_child(swatter_entity)
+
 	swatter_layer = CanvasLayer.new()
 	swatter_layer.name = "Swatter"
 	swatter_layer.layer = 100
@@ -115,6 +136,21 @@ func _build_hud() -> void:
 	flies_label = Label.new()
 	flies_label.text = "Flies: 0"
 	row.add_child(flies_label)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+
+	swatter_energy_label = Label.new()
+	swatter_energy_label.text = "Energy"
+	row.add_child(swatter_energy_label)
+
+	swatter_energy_bar = ProgressBar.new()
+	swatter_energy_bar.show_percentage = false
+	swatter_energy_bar.custom_minimum_size = Vector2(140, 12)
+	swatter_energy_bar.max_value = 100.0
+	swatter_energy_bar.value = 100.0
+	row.add_child(swatter_energy_bar)
 
 func _build_menu() -> void:
 	menu_layer = CanvasLayer.new()
@@ -170,6 +206,7 @@ func _show_menu(final_score: int = -1) -> void:
 	fly_container.visible = false
 	_clear_flies()
 	_clear_food()
+	_clear_customers()
 
 	if final_score >= 0:
 		menu_title.text = "Round Complete"
@@ -188,6 +225,7 @@ func _show_loss() -> void:
 	fly_container.visible = false
 	_clear_flies()
 	_clear_food()
+	_clear_customers()
 
 	menu_title.text = "You Lose"
 	result_label.text = "No food left in the container"
@@ -196,12 +234,15 @@ func _show_loss() -> void:
 func _start_round() -> void:
 	score = 0
 	flies_left = ROUND_FLY_COUNT
+	customer_spawn_timer = randf_range(CUSTOMER_SPAWN_MIN_TIME, CUSTOMER_SPAWN_MAX_TIME)
+	swatter_entity.call("reset")
 	round_active = true
 	_set_swatter_active(true)
 	menu_layer.visible = false
 	hud_layer.visible = true
 	food_container.visible = true
 	fly_container.visible = true
+	customer_container.visible = true
 	_update_hud()
 	_spawn_food()
 	if _get_active_food_count() <= 0:
@@ -290,6 +331,13 @@ func _clear_food() -> void:
 	for child in food_container.get_children():
 		child.queue_free()
 
+func _clear_customers() -> void:
+	if customer_container == null:
+		return
+
+	for child in customer_container.get_children():
+		child.queue_free()
+
 func _on_food_depleted(_food: Area2D) -> void:
 	if not round_active:
 		return
@@ -321,6 +369,80 @@ func _on_fly_spawn_requested(spawn_position: Vector2) -> void:
 func _update_hud() -> void:
 	score_label.text = "Score: %d" % score
 	flies_label.text = "Flies: %d" % flies_left
+
+func _update_customer_spawns(delta: float) -> void:
+	if not round_active or customer_container == null:
+		return
+
+	customer_spawn_timer -= delta
+	if customer_spawn_timer > 0.0:
+		return
+
+	_spawn_customer_hand()
+	customer_spawn_timer = randf_range(CUSTOMER_SPAWN_MIN_TIME, CUSTOMER_SPAWN_MAX_TIME)
+
+func _spawn_customer_hand() -> void:
+	if _get_active_customer_count() >= MAX_ACTIVE_CUSTOMERS:
+		return
+
+	var target := _get_customer_target_position()
+	var viewport_size := get_viewport_rect().size
+	var start := Vector2(
+		randf_range(viewport_size.x * 0.75, viewport_size.x + 140.0),
+		-80.0
+	)
+
+	var hand := CUSTOMER_HAND_SCRIPT.new() as Area2D
+	hand.call("configure", start, target)
+	hand.connect("swatted", _on_customer_swatted)
+	hand.connect("finished", _on_customer_finished)
+	customer_container.add_child(hand)
+
+func _get_customer_target_position() -> Vector2:
+	var foods := []
+	if food_container != null:
+		foods = food_container.get_children()
+
+	if not foods.is_empty():
+		var food := foods.pick_random() as Node2D
+		if food != null:
+			return food.global_position
+
+	var polygon := _get_container_polygon_global()
+	if polygon.size() > 0:
+		var bounds := Rect2(polygon[0], Vector2.ZERO)
+		for point in polygon:
+			bounds = bounds.expand(point)
+		return bounds.get_center()
+
+	return get_viewport_rect().size * 0.5
+
+func _on_customer_swatted(_hand: Area2D) -> void:
+	swatter_entity.call("hit_customer")
+
+func _on_customer_finished(_hand: Area2D) -> void:
+	pass
+
+func _on_swatter_energy_changed(energy: float, max_energy: float, reloading: bool) -> void:
+	if swatter_energy_bar == null or swatter_energy_label == null:
+		return
+
+	swatter_energy_bar.max_value = max_energy
+	swatter_energy_bar.value = energy
+	swatter_energy_label.text = "Reloading" if reloading else "Energy"
+
+func _get_active_customer_count() -> int:
+	if customer_container == null:
+		return 0
+
+	var count := 0
+	for customer in customer_container.get_children():
+		if customer.is_queued_for_deletion():
+			continue
+
+		count += 1
+
+	return count
 
 func _get_container_polygon_global() -> PackedVector2Array:
 	var points := PackedVector2Array()
@@ -411,6 +533,11 @@ func _update_swatter(delta: float) -> void:
 
 func _start_swatter_attack() -> void:
 	if swatter_sprite == null:
+		return
+	if swatter_entity != null and not swatter_entity.call("can_attack"):
+		return
+
+	if swatter_entity != null and not swatter_entity.call("swat"):
 		return
 
 	swatter_sprite.texture = SWATTER_ATTACK_TEXTURE
