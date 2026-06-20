@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bs3n44j5vr8ha"
-path="res://.godot/imported/cabbage_75.png-006e5ec548d2aec4e0b645a54c3df06d.ctex"
+uid="uid://cwbny03rpw4jd"
+path="res://.godot/imported/table.png-11d69f307f55a21d659dfcff4f10ad7d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/cabbage/cabbage_75.png"
-dest_files=["res://.godot/imported/cabbage_75.png-006e5ec548d2aec4e0b645a54c3df06d.ctex"]
+source_file="res://assets/background/table.png"
+dest_files=["res://.godot/imported/table.png-11d69f307f55a21d659dfcff4f10ad7d.ctex"]
 
 [params]
 

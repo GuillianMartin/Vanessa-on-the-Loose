@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://chplh1fqiowkn"
-path="res://.godot/imported/tomato_45.png-db07ca6be4a90c82359e42b64dcf24ab.ctex"
+uid="uid://c33jfdteplg4t"
+path="res://.godot/imported/critical.png-ddd78541718c1f6dfb2c93987cb8623d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/tomato/tomato_45.png"
-dest_files=["res://.godot/imported/tomato_45.png-db07ca6be4a90c82359e42b64dcf24ab.ctex"]
+source_file="res://assets/Foods/Vegetable/tomato/critical.png"
+dest_files=["res://.godot/imported/critical.png-ddd78541718c1f6dfb2c93987cb8623d.ctex"]
 
 [params]
 

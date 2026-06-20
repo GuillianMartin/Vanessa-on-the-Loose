@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvpjhguhs7w0p"
-path="res://.godot/imported/tomato_default.png-80e55ae6a4b1fbf0ecfa9045202b6283.ctex"
+uid="uid://b32jec7j8xd4i"
+path="res://.godot/imported/hand_damage.png-cd98f73a8385e4d4fae63ba4267a41c6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/tomato/tomato_default.png"
-dest_files=["res://.godot/imported/tomato_default.png-80e55ae6a4b1fbf0ecfa9045202b6283.ctex"]
+source_file="res://assets/customer/default_customer/hand_damage.png"
+dest_files=["res://.godot/imported/hand_damage.png-cd98f73a8385e4d4fae63ba4267a41c6.ctex"]
 
 [params]
 

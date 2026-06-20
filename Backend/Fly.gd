@@ -6,9 +6,11 @@ signal died(fly: Area2D)
 signal spawn_requested(position: Vector2)
 
 const FLYING_FLY_TEXTURE := preload("res://assets/Flies/fly_flying.png")
-const EATING_FLY_TEXTURE := preload("res://assets/Flies/eating_fly.png")
+const EATING_FLY_TEXTURE := preload("res://assets/Flies/fly_eating.png")
 const FLYING_FRAME_COUNT := 6
+const EATING_FRAME_COUNT := 4
 const FLYING_FRAME_TIME := 0.055
+const EATING_FRAME_TIME := 0.08
 const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 44.0
 const BITE_DAMAGE := 15.0
@@ -27,6 +29,7 @@ class FlyBehavior:
 	var health_bar_width: float
 	var health_bar_y: float
 	var knockback_strength: float
+	var eat_time_limit: float
 	var can_spawn: bool
 
 	func _init(
@@ -39,6 +42,7 @@ class FlyBehavior:
 		behavior_health_bar_width: float,
 		behavior_health_bar_y: float,
 		behavior_knockback_strength: float,
+		behavior_eat_time_limit: float,
 		behavior_can_spawn: bool = false
 	) -> void:
 		name = behavior_name
@@ -50,13 +54,14 @@ class FlyBehavior:
 		health_bar_width = behavior_health_bar_width
 		health_bar_y = behavior_health_bar_y
 		knockback_strength = behavior_knockback_strength
+		eat_time_limit = behavior_eat_time_limit
 		can_spawn = behavior_can_spawn
 
 static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]:
 	var behaviors: Array[FlyBehavior] = [
-		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.68, 0.60), Color.WHITE, 48.0, 72.0, -66.0, 360.0),
-		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.58, 0.52), Color(1.0, 0.95, 0.55), 42.0, 66.0, -60.0, 430.0),
-		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.96, 0.84), Color(1.0, 0.62, 0.62), 72.0, 92.0, -92.0, 290.0),
+		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.68, 0.60), Color.WHITE, 48.0, 72.0, -66.0, 360.0, 2.4),
+		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.58, 0.52), Color(1.0, 0.95, 0.55), 42.0, 66.0, -60.0, 430.0, 1.5),
+		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.96, 0.84), Color(1.0, 0.62, 0.62), 72.0, 92.0, -92.0, 290.0, 3.2),
 	]
 
 	if include_mother:
@@ -65,7 +70,7 @@ static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]
 	return behaviors
 
 static func get_mother_behavior() -> FlyBehavior:
-	return FlyBehavior.new("Mother", 4, 95.0, Vector2(0.88, 0.76), Color(0.75, 1.0, 0.78), 66.0, 88.0, -86.0, 320.0, true)
+	return FlyBehavior.new("Mother", 4, 95.0, Vector2(0.88, 0.76), Color(0.75, 1.0, 0.78), 66.0, 88.0, -86.0, 320.0, 3.0, true)
 
 var behavior: FlyBehavior
 var health := 1
@@ -78,7 +83,8 @@ var knockback_timer := 0.0
 var clicks_until_scare := 1
 var click_streak := 0
 var bites_since_spawn := 0
-var flying_frame_timer := 0.0
+var sprite_frame_timer := 0.0
+var eating_time := 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -105,6 +111,7 @@ func configure(new_behavior: FlyBehavior, bounds: Rect2) -> void:
 	clicks_until_scare = randi_range(1, 3)
 	click_streak = 0
 	bites_since_spawn = 0
+	eating_time = 0.0
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * behavior.speed
 
 	if is_node_ready():
@@ -114,6 +121,7 @@ func _apply_behavior() -> void:
 	_set_flying_sprite()
 	sprite.scale = behavior.image_scale
 	sprite.modulate = behavior.tint
+	_update_sprite_direction()
 
 	var shape := collision_shape.shape as CircleShape2D
 	if shape != null:
@@ -135,11 +143,14 @@ func _setup_health_bar() -> void:
 
 func _process(delta: float) -> void:
 	if sprite.texture == FLYING_FLY_TEXTURE:
-		_animate_flying(delta)
+		_animate_sprite(delta, FLYING_FRAME_COUNT, FLYING_FRAME_TIME)
+	elif sprite.texture == EATING_FLY_TEXTURE:
+		_animate_sprite(delta, EATING_FRAME_COUNT, EATING_FRAME_TIME)
 
 	if knockback_timer > 0.0:
 		knockback_timer -= delta
 		position += velocity * delta
+		_update_sprite_direction()
 		_keep_inside_bounds()
 		if knockback_timer <= 0.0:
 			target_food = null
@@ -159,15 +170,19 @@ func _process(delta: float) -> void:
 	_keep_inside_bounds()
 
 func _animate_flying(delta: float) -> void:
-	flying_frame_timer += delta
-	if flying_frame_timer < FLYING_FRAME_TIME:
+	_animate_sprite(delta, FLYING_FRAME_COUNT, FLYING_FRAME_TIME)
+
+func _animate_sprite(delta: float, frame_count: int, frame_time: float) -> void:
+	sprite_frame_timer += delta
+	if sprite_frame_timer < frame_time:
 		return
 
-	flying_frame_timer = 0.0
-	sprite.frame = (sprite.frame + 1) % FLYING_FRAME_COUNT
+	sprite_frame_timer = 0.0
+	sprite.frame = (sprite.frame + 1) % frame_count
 
 func _wander(delta: float) -> void:
 	position += velocity * delta
+	_update_sprite_direction()
 
 func _move_to_food(delta: float) -> void:
 	var to_food := target_food.global_position - global_position
@@ -176,11 +191,14 @@ func _move_to_food(delta: float) -> void:
 	if distance > eat_distance:
 		velocity = velocity.lerp(to_food.normalized() * behavior.speed, 5.0 * delta)
 		position += velocity * delta
+		eating_time = 0.0
+		_update_sprite_direction()
 		_set_flying_sprite()
 		return
 
 	velocity = velocity.lerp(Vector2.ZERO, 8.0 * delta)
 	_set_eating_sprite()
+	eating_time += delta
 	bite_timer -= delta
 	if bite_timer <= 0.0:
 		bite_timer = BITE_INTERVAL
@@ -189,6 +207,9 @@ func _move_to_food(delta: float) -> void:
 			health = mini(health + healing, behavior.max_health)
 			_update_health_bar()
 			_try_spawn_from_food()
+
+	if eating_time >= behavior.eat_time_limit:
+		_leave_food()
 
 func _keep_inside_bounds() -> void:
 	var margin: float = minf(_get_collision_radius() * 0.45, 130.0)
@@ -260,6 +281,7 @@ func _start_knockback() -> void:
 	click_streak = 0
 	clicks_until_scare = randi_range(1, 3)
 	knockback_timer = KNOCKBACK_TIME
+	eating_time = 0.0
 	_set_flying_sprite()
 
 	var direction := Vector2.RIGHT.rotated(randf_range(0.0, TAU))
@@ -269,6 +291,7 @@ func _start_knockback() -> void:
 			direction = Vector2.RIGHT.rotated(randf_range(0.0, TAU))
 
 	velocity = direction * behavior.knockback_strength
+	_update_sprite_direction()
 
 func _get_eat_distance() -> float:
 	return maxf(BASE_EAT_DISTANCE, _get_collision_radius() * 0.55)
@@ -300,13 +323,28 @@ func _set_flying_sprite() -> void:
 	sprite.hframes = FLYING_FRAME_COUNT
 	sprite.vframes = 1
 	sprite.frame = 0
-	flying_frame_timer = 0.0
+	sprite_frame_timer = 0.0
 
 func _set_eating_sprite() -> void:
 	if sprite.texture == EATING_FLY_TEXTURE:
 		return
 
 	sprite.texture = EATING_FLY_TEXTURE
-	sprite.hframes = 1
+	sprite.hframes = EATING_FRAME_COUNT
 	sprite.vframes = 1
 	sprite.frame = 0
+	sprite_frame_timer = 0.0
+
+func _update_sprite_direction() -> void:
+	if absf(velocity.x) < 1.0:
+		return
+
+	sprite.flip_h = velocity.x > 0.0
+
+func _leave_food() -> void:
+	eating_time = 0.0
+	target_food = null
+	target_refresh_timer = TARGET_REFRESH_TIME
+	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * behavior.speed
+	_update_sprite_direction()
+	_set_flying_sprite()

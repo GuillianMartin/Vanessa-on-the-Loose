@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dws0ji6me5xe6"
-path="res://.godot/imported/meat1.png-8309686bc50a08a1af5ef336d16748ac.ctex"
+uid="uid://d36qwv128rct"
+path="res://.godot/imported/critical.png-710289b1b8419c19b711ddd19ccb81f6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/Meat/meat1.png"
-dest_files=["res://.godot/imported/meat1.png-8309686bc50a08a1af5ef336d16748ac.ctex"]
+source_file="res://assets/Foods/Vegetable/cabbage/critical.png"
+dest_files=["res://.godot/imported/critical.png-710289b1b8419c19b711ddd19ccb81f6.ctex"]
 
 [params]
 
