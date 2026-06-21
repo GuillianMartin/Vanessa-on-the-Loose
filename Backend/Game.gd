@@ -21,11 +21,11 @@ const CUSTOMER_SPAWN_MAX_TIME := 3.2
 const MAX_ACTIVE_CUSTOMERS := 5
 
 # --- New Gameplay Mode Parameters ---
-const GAME_DURATION_SECONDS := 180.0 # 3 Minutes match clock
+const GAME_DURATION_SECONDS := 180.0 # 2 Minutes match clock
 var game_timer := 0.0
 
 var current_money := 0
-var money_goal := 150
+var money_goal := 1000
 var buyers_remaining := 25
 
 var score := 0

@@ -13,6 +13,9 @@ const FLYING_FRAME_COUNT := 6
 const EATING_FRAME_COUNT := 4
 const FLYING_FRAME_TIME := 0.055
 const EATING_FRAME_TIME := 0.08
+const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
+const KILL_SPRITE_FRAME_COUNT := 6
+const KILL_SPRITE_FRAME_TIME := 0.08
 const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 44.0
 const BITE_DAMAGE := 6.0
@@ -61,9 +64,9 @@ class FlyBehavior:
 
 static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]:
 	var behaviors: Array[FlyBehavior] = [
-		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 72.0, -66.0, 360.0, 2.4),
-		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.38, 0.32), Color(1.0, 0.95, 0.55), 42.0, 66.0, -60.0, 430.0, 1.5),
-		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.66, 0.54), Color(1.0, 0.62, 0.62), 72.0, 92.0, -92.0, 290.0, 3.2),
+		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 52.0, -66.0, 360.0, 2.4),
+		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.38, 0.32), Color(0.987, 0.96, 0.476, 1.0), 32.0, 66.0, -60.0, 430.0, 1.5),
+		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.36, 0.34), Color(0.725, 0.681, 0.355, 1.0), 52.0, 92.0, -92.0, 290.0, 3.2),
 	]
 
 	if include_mother:
@@ -72,7 +75,7 @@ static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]
 	return behaviors
 
 static func get_mother_behavior() -> FlyBehavior:
-	return FlyBehavior.new("Mother", 4, 95.0, Vector2(0.88, 0.76), Color(0.75, 1.0, 0.78), 66.0, 88.0, -86.0, 320.0, 3.0, true)
+	return FlyBehavior.new("Mother", 4, 95.0, Vector2(0.58, 0.46), Color(0.75, 1.0, 0.78), 66.0, 88.0, -86.0, 320.0, 3.0, true)
 
 var behavior: FlyBehavior
 var health := 1
@@ -87,6 +90,8 @@ var click_streak := 0
 var bites_since_spawn := 0
 var sprite_frame_timer := 0.0
 var eating_time := 0.0
+var is_dying := false
+var death_frame_index := 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -149,6 +154,10 @@ func _setup_health_bar() -> void:
 	add_child(health_bar)
 
 func _process(delta: float) -> void:
+	if is_dying:
+		_animate_death_sprite(delta)
+		return
+
 	if sprite.texture in [FLYING_FLY_TEXTURE, CHUNKY_FLY_FLYING_TEXTURE]:
 		_animate_sprite(delta, _get_flying_frame_count(), FLYING_FRAME_TIME)
 	elif sprite.texture in [EATING_FLY_TEXTURE, CHUNKY_FLY_EATING_TEXTURE]:
@@ -178,6 +187,37 @@ func _process(delta: float) -> void:
 
 func _animate_flying(delta: float) -> void:
 	_animate_sprite(delta, FLYING_FRAME_COUNT, FLYING_FRAME_TIME)
+
+func _animate_death_sprite(delta: float) -> void:
+	sprite_frame_timer += delta
+	if sprite_frame_timer < KILL_SPRITE_FRAME_TIME:
+		return
+
+	sprite_frame_timer = 0.0
+	death_frame_index += 1
+	if death_frame_index >= KILL_SPRITE_FRAME_COUNT:
+		queue_free()
+		return
+
+	sprite.frame = death_frame_index
+
+func _play_death_animation() -> void:
+	is_dying = true
+	death_frame_index = 0
+	target_food = null
+	velocity = Vector2.ZERO
+	knockback_timer = 0.0
+	input_pickable = false
+	if collision_shape != null:
+		collision_shape.disabled = true
+	if health_bar != null:
+		health_bar.visible = false
+
+	sprite.texture = KILL_SPRITE_TEXTURE
+	sprite.hframes = KILL_SPRITE_FRAME_COUNT
+	sprite.vframes = 1
+	sprite.frame = 0
+	sprite_frame_timer = 0.0
 
 func _animate_sprite(delta: float, frame_count: int, frame_time: float) -> void:
 	sprite_frame_timer += delta
@@ -251,7 +291,7 @@ func take_damage(amount: int) -> void:
 
 	if health <= 0:
 		died.emit(self)
-		queue_free()
+		_play_death_animation()
 		return
 
 	if click_streak >= clicks_until_scare:

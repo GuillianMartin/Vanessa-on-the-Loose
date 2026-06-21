@@ -7,6 +7,7 @@ signal finished(hand: Area2D, status: String, payout: int)
 const DEFAULT_TEXTURE := preload("res://assets/customer/default_customer/hand_default.png")
 const DAMAGE_TEXTURE := preload("res://assets/customer/default_customer/hand_damage.png")
 const HAND_SCALE := Vector2(0.7, 0.7)
+const FOOD_CARRY_OFFSET := Vector2(0, 120)
 const HIT_RADIUS := 48.0
 const SPEED := 280.0
 const DAMAGE_SHOW_TIME := 0.25 
@@ -14,7 +15,7 @@ const DAMAGE_SHOW_TIME := 0.25
 const MAX_PATIENCE := 100.0
 const PATIENCE_LOSS_FROM_SWAT := 20.0       
 const PATIENCE_LOSS_PER_FLY_SECOND := 1.0   
-const REACH_THRESHOLD := 15.0
+const REACH_THRESHOLD := 8.0
 
 var target_position := Vector2.ZERO
 var velocity := Vector2.ZERO
@@ -144,8 +145,9 @@ func _complete_transaction() -> void:
 		var food_container = target_food.get_parent()
 		if food_container:
 			food_container.remove_child(target_food)
+			target_food.z_index = -1
 			add_child(target_food)
-			target_food.position = Vector2.ZERO 
+			target_food.position = FOOD_CARRY_OFFSET
 			if target_food.has_node("CollisionShape2D"):
 				target_food.get_node("CollisionShape2D").disabled = true
 			if target_food.get_node_or_null("ProgressBar"):
