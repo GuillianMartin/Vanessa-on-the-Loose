@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b6kawyol5armn"
-path="res://.godot/imported/default.png-ed9fcb8014604f9e2926335c676cf5e1.ctex"
+uid="uid://btwag8n4oj57u"
+path="res://.godot/imported/chunky_fly_flying.png-be05365731b20b859a5a64efdf58031a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/Meat/default.png"
-dest_files=["res://.godot/imported/default.png-ed9fcb8014604f9e2926335c676cf5e1.ctex"]
+source_file="res://assets/Flies/chunky_fly/chunky_fly_flying.png"
+dest_files=["res://.godot/imported/chunky_fly_flying.png-be05365731b20b859a5a64efdf58031a.ctex"]
 
 [params]
 
