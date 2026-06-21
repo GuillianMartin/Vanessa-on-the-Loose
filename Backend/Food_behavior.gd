@@ -17,6 +17,9 @@ const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
+var base_price := 15.0
+var price_label: Label
+
 class FoodConfig:
 	var name: String
 	var default_texture: Texture2D
@@ -27,6 +30,7 @@ class FoodConfig:
 	var spoil_rate: float
 	var nutrition: int
 	var radius: float
+	var base_price: float # <-- Add this
 
 	func _init(
 		food_name: String,
@@ -37,7 +41,8 @@ class FoodConfig:
 		food_max_freshness: float,
 		food_spoil_rate: float,
 		food_nutrition: int,
-		food_radius: float
+		food_radius: float,
+		food_base_price: float # <-- Add this
 	) -> void:
 		name = food_name
 		default_texture = food_default_texture
@@ -48,13 +53,15 @@ class FoodConfig:
 		spoil_rate = food_spoil_rate
 		nutrition = food_nutrition
 		radius = food_radius
+		base_price = food_base_price
 
 static func get_food_types() -> Array[FoodConfig]:
 	return [
-		FoodConfig.new("Meat", _load_texture(MEAT_DEFAULT_PATH), null, null, 118.0 * FOOD_SIZE_MULT, 120.0, 0.9, 2, 58.0 * FOOD_SIZE_MULT),
-		FoodConfig.new("Carrot", _load_texture(CARROT_DEFAULT_PATH), _load_texture(CARROT_NOTGOOD_PATH), _load_texture(CARROT_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 95.0, 1.25, 1, 50.0 * FOOD_SIZE_MULT),
-		FoodConfig.new("Cabbage", _load_texture(CABBAGE_DEFAULT_PATH), _load_texture(CABBAGE_NOTGOOD_PATH), _load_texture(CABBAGE_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 105.0, 1.05, 1, 50.0 * FOOD_SIZE_MULT),
-		FoodConfig.new("Tomato", _load_texture(TOMATO_DEFAULT_PATH), _load_texture(TOMATO_NOTGOOD_PATH), _load_texture(TOMATO_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 1.2, 1, 48.0 * FOOD_SIZE_MULT),
+		# Formats: Name, Default, NotGood, Critical, VisualSize, MaxFreshness, SpoilRate, Nutrition, Radius, BasePrice
+		FoodConfig.new("Meat", _load_texture(MEAT_DEFAULT_PATH), null, null, 118.0 * FOOD_SIZE_MULT, 120.0, 0.45, 2, 58.0 * FOOD_SIZE_MULT, 75.0),
+		FoodConfig.new("Carrot", _load_texture(CARROT_DEFAULT_PATH), _load_texture(CARROT_NOTGOOD_PATH), _load_texture(CARROT_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 95.0, 0.6, 1, 50.0 * FOOD_SIZE_MULT, 25.0),
+		FoodConfig.new("Cabbage", _load_texture(CABBAGE_DEFAULT_PATH), _load_texture(CABBAGE_NOTGOOD_PATH), _load_texture(CABBAGE_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 105.0, 0.5, 1, 50.0 * FOOD_SIZE_MULT, 35.0),
+		FoodConfig.new("Tomato", _load_texture(TOMATO_DEFAULT_PATH), _load_texture(TOMATO_NOTGOOD_PATH), _load_texture(TOMATO_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
 	]
 
 static func get_random_config() -> FoodConfig:
@@ -171,6 +178,15 @@ func _ensure_nodes() -> void:
 		freshness_bar.show_percentage = false
 		freshness_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(freshness_bar)
+	
+	if price_label == null:
+		price_label = Label.new()
+		# Add minimal theme formatting to make it clean
+		price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		price_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+		price_label.add_theme_constant_override("shadow_offset_x", 1)
+		price_label.add_theme_constant_override("shadow_offset_y", 1)
+		add_child(price_label)
 
 func _update_visuals() -> void:
 	if sprite == null or freshness_bar == null:
@@ -185,6 +201,13 @@ func _update_visuals() -> void:
 	freshness_bar.max_value = max_freshness
 	freshness_bar.value = freshness
 	freshness_bar.visible = true
+	
+	# Update the value text dynamically every frame
+	if price_label:
+		price_label.text = "$%d" % get_current_value()
+		# Position it slightly below the freshness health bar
+		price_label.position = Vector2(-50, radius + 16.0)
+		price_label.custom_minimum_size = Vector2(100, 20)
 
 func _update_food_sprite(force: bool = false) -> void:
 	if config == null or sprite == null:
@@ -227,3 +250,8 @@ func _animate_critical(delta: float) -> void:
 
 	critical_frame_timer = 0.0
 	sprite.frame = (sprite.frame + 1) % CRITICAL_FRAME_COUNT
+
+# Call this helper method to get the value dynamically
+func get_current_value() -> int:
+	var freshness_ratio := freshness / max_freshness
+	return int(base_price * freshness_ratio)
