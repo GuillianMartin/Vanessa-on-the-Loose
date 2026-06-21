@@ -13,7 +13,7 @@ const FLYING_FRAME_TIME := 0.055
 const EATING_FRAME_TIME := 0.08
 const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 44.0
-const BITE_DAMAGE := 15.0
+const BITE_DAMAGE := 6.0
 const BITE_INTERVAL := 0.65
 const KNOCKBACK_TIME := 0.28
 const MOTHER_SPAWN_BITE_THRESHOLD := 4
@@ -93,6 +93,11 @@ var health_bar: ProgressBar
 
 func _ready() -> void:
 	input_pickable = true
+	add_to_group("flies") # added line for disgust meter
+	
+	monitoring = true
+	monitorable = true
+	
 	if behavior == null:
 		configure(get_random_behavior(), movement_bounds)
 	else:

@@ -1,66 +1,58 @@
 extends Node
 
-signal energy_changed(energy: float, max_energy: float, reloading: bool)
-signal reload_started(duration: float)
-signal reload_finished()
+signal energy_changed(energy: float, max_energy: float)
 
 const MAX_ENERGY := 100.0
 const SWAT_COST := 5.0
 const CUSTOMER_HIT_COST := 20.0
-const RELOAD_TIME := 3.0
+
+# Combo variables
+const COMBO_WINDOW := 1.2 # seconds allowed between hits to maintain combo
+const BASE_REGEN_RATE := 12.0 # units per second
+const MAX_COMBO := 5
 
 var energy := MAX_ENERGY
-var reloading := false
-var reload_timer := 0.0
+var current_combo := 0
+var combo_timer := 0.0
 
 func _ready() -> void:
 	add_to_group("swatters")
-	energy_changed.emit(energy, MAX_ENERGY, reloading)
+	energy_changed.emit(energy, MAX_ENERGY)
 
 func _process(delta: float) -> void:
-	if not reloading:
-		return
-
-	reload_timer -= delta
-	if reload_timer > 0.0:
-		return
-
-	energy = MAX_ENERGY
-	reloading = false
-	reload_finished.emit()
-	energy_changed.emit(energy, MAX_ENERGY, reloading)
+	# Handle combo decaying over time
+	if current_combo > 0:
+		combo_timer -= delta
+		if combo_timer <= 0.0:
+			current_combo = 0
+	
+	# Regenerate energy passively: base rate + bonus based on current combo tier
+	if energy < MAX_ENERGY:
+		var combo_multiplier := 1.0 + (current_combo * 0.5) # e.g., 2.5x speed at combo 3
+		energy = minf(energy + (BASE_REGEN_RATE * combo_multiplier * delta), MAX_ENERGY)
+		energy_changed.emit(energy, MAX_ENERGY)
 
 func can_attack() -> bool:
-	return not reloading and energy > 0.0
+	return energy >= SWAT_COST
 
 func reset() -> void:
 	energy = MAX_ENERGY
-	reloading = false
-	reload_timer = 0.0
-	energy_changed.emit(energy, MAX_ENERGY, reloading)
+	current_combo = 0
+	combo_timer = 0.0
+	energy_changed.emit(energy, MAX_ENERGY)
 
 func swat() -> bool:
 	if not can_attack():
 		return false
-
-	_use_energy(SWAT_COST)
+	energy -= SWAT_COST
+	energy_changed.emit(energy, MAX_ENERGY)
 	return true
 
+func register_fly_kill() -> void:
+	current_combo = mini(current_combo + 1, MAX_COMBO)
+	combo_timer = COMBO_WINDOW
+
 func hit_customer() -> void:
-	if reloading:
-		return
-
-	_use_energy(CUSTOMER_HIT_COST)
-
-func _use_energy(amount: float) -> void:
-	energy = maxf(energy - amount, 0.0)
-	if energy <= 0.0:
-		_start_reload()
-	else:
-		energy_changed.emit(energy, MAX_ENERGY, reloading)
-
-func _start_reload() -> void:
-	reloading = true
-	reload_timer = RELOAD_TIME
-	reload_started.emit(RELOAD_TIME)
-	energy_changed.emit(energy, MAX_ENERGY, reloading)
+	energy = maxf(energy - CUSTOMER_HIT_COST, 0.0)
+	current_combo = 0 # Break combo streak on penalty
+	energy_changed.emit(energy, MAX_ENERGY)
