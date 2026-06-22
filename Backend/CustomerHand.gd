@@ -14,9 +14,9 @@ const DAMAGE_SHOW_TIME := 0.25
 const MAX_PATIENCE := 100.0
 const PATIENCE_LOSS_FROM_SWAT := 50.0       
 const PATIENCE_LOSS_PER_FLY_SECOND := 8.0   
-const REACH_THRESHOLD := 5.0
+const REACH_THRESHOLD := -2.0
 
-var target_position := Vector2.ZERO
+var target_position := FOOD_CARRY_OFFSET
 var velocity := Vector2.ZERO
 var leaving := false
 var damage_timer := 2.0
@@ -55,6 +55,18 @@ func configure(start_position: Vector2, food_node: Node2D) -> void:
 	if is_node_ready():
 		_ensure_nodes()
 
+func _get_hitbox_extents(node: Node2D) -> Vector2:
+	var food_cs := node.get_node_or_null("CollisionShape2D")
+	if food_cs and food_cs.shape:
+		if food_cs.shape is RectangleShape2D:
+			var temp = (food_cs.shape.radius / 3)
+			return Vector2(temp, temp)
+			
+		if food_cs.shape is CircleShape2D:
+			var temp = (food_cs.shape.radius / 3)
+			return temp
+	return Vector2.ZERO
+
 func _process(delta: float) -> void:
 	if local_patience_bar:
 		local_patience_bar.value = patience
@@ -91,7 +103,17 @@ func _process(delta: float) -> void:
 			_trigger_leave("depleted", 0)
 			return
 
-		if position.distance_to(target_position) <= maxf(SPEED * delta, REACH_THRESHOLD):
+		# Use the target food hitbox for reach checks, not just the food center.
+		var reach_check_distance: float = maxf(SPEED * delta, REACH_THRESHOLD)
+		var hand_half_size: Vector2 = _get_hitbox_extents(self)
+		if hand_half_size == Vector2.ZERO and collision_shape and collision_shape.shape:
+			hand_half_size = Vector2(collision_shape.shape.extents.x, collision_shape.shape.extents.y) if collision_shape.shape is RectangleShape2D else Vector2.ZERO
+		var food_half_size: Vector2 = Vector2.ZERO
+		if is_instance_valid(target_food):
+			food_half_size = _get_hitbox_extents(target_food)
+		var x_distance: float = abs(position.x - target_position.x)
+		var y_distance: float = abs(position.y - target_position.y)
+		if x_distance <= hand_half_size.x + food_half_size.x and y_distance <= hand_half_size.y + food_half_size.y + reach_check_distance:
 			has_reached_target = true
 			_complete_transaction()
 

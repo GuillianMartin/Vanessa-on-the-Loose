@@ -22,7 +22,7 @@ const CHICKEN_NOTGOOD_PATH := "res://assets/Foods/Meat/Chicken/notgood.png"
 const CHICKEN_CRITICAL_PATH := "res://assets/Foods/Meat/Chicken/critical.png"
 
 
-const FOOD_SIZE_MULT := 2
+const FOOD_SIZE_MULT := 2.5
 const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
