@@ -3,6 +3,11 @@ extends Area2D
 signal depleted(food: Area2D)
 
 const MEAT_DEFAULT_PATH := "res://assets/Foods/Meat/Pork/default.png"
+
+const PORK_DEFAULT_PATH := "res://assets/Foods/Meat/Pork/default.png"
+const PORK_NOTGOOD_PATH := "res://assets/Foods/Meat/Pork/notgood.png"
+const PORK_CRITICAL_PATH := "res://assets/Foods/Meat/Pork/critical.png"
+
 const CARROT_DEFAULT_PATH := "res://assets/Foods/Vegetable/carrot/default.png"
 const CARROT_NOTGOOD_PATH := "res://assets/Foods/Vegetable/carrot/notgood.png"
 const CARROT_CRITICAL_PATH := "res://assets/Foods/Vegetable/carrot/critical.png"
@@ -17,7 +22,7 @@ const CHICKEN_NOTGOOD_PATH := "res://assets/Foods/Meat/Chicken/notgood.png"
 const CHICKEN_CRITICAL_PATH := "res://assets/Foods/Meat/Chicken/critical.png"
 
 
-const FOOD_SIZE_MULT := 1.2
+const FOOD_SIZE_MULT := 2
 const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
@@ -63,8 +68,8 @@ class FoodConfig:
 static func get_food_types() -> Array[FoodConfig]:
 	return [
 		# Formats: Name, Default, NotGood, Critical, VisualSize, MaxFreshness, SpoilRate, Nutrition, Radius, BasePrice
-		FoodConfig.new("Meat", _load_texture(MEAT_DEFAULT_PATH), null, null, 118.0 * FOOD_SIZE_MULT, 120.0, 0.45, 2, 58.0 * FOOD_SIZE_MULT, 75.0),
-		FoodConfig.new("Tomato", _load_texture(CHICKEN_DEFAULT_PATH), _load_texture(CHICKEN_NOTGOOD_PATH), _load_texture(CHICKEN_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
+		FoodConfig.new("Pork", _load_texture(PORK_DEFAULT_PATH), _load_texture(PORK_NOTGOOD_PATH), _load_texture(PORK_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
+		FoodConfig.new("Chicken", _load_texture(CHICKEN_DEFAULT_PATH), _load_texture(CHICKEN_NOTGOOD_PATH), _load_texture(CHICKEN_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
 		FoodConfig.new("Carrot", _load_texture(CARROT_DEFAULT_PATH), _load_texture(CARROT_NOTGOOD_PATH), _load_texture(CARROT_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 95.0, 0.6, 1, 50.0 * FOOD_SIZE_MULT, 25.0),
 		FoodConfig.new("Cabbage", _load_texture(CABBAGE_DEFAULT_PATH), _load_texture(CABBAGE_NOTGOOD_PATH), _load_texture(CABBAGE_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 105.0, 0.5, 1, 50.0 * FOOD_SIZE_MULT, 35.0),
 		FoodConfig.new("Tomato", _load_texture(TOMATO_DEFAULT_PATH), _load_texture(TOMATO_NOTGOOD_PATH), _load_texture(TOMATO_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),

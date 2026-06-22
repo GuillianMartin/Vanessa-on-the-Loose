@@ -20,7 +20,7 @@ texture = ExtResource("3_hby63")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Container" unique_id=690823877]
 position = Vector2(-1.4995708, 44.769226)
-polygon = PackedVector2Array(-691.3024, -233.34265, 698.8003, -230.62936, 781.27673, 67.83215, 839.7601, 336.4475, -863.7531, 336.4475, -806.7694, 134.30768)
+polygon = PackedVector2Array(-758.78314, -244.1958, 737.7891, -246.90909, 838.26044, 65.1189, 844.2587, 397.49646, -878.74884, 392.0699, -863.7531, 122.0979)
 
 [node name="sfx_swat" type="AudioStreamPlayer2D" parent="." unique_id=1264548538]
 stream = ExtResource("3_qn0m5")

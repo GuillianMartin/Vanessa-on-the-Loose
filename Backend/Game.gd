@@ -8,10 +8,10 @@ const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_de
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 
 const ROUND_FLY_COUNT := 20
-const ROUND_FOOD_COUNT := 15
+const ROUND_FOOD_COUNT := 5
 const TOP_SAFE_AREA := 72.0
-const EDGE_PADDING := 70.0
-const FOOD_GAP := 10.0
+const EDGE_PADDING := 30.0
+const FOOD_GAP := 5.0
 const FOOD_PLACEMENT_ATTEMPTS := 500
 const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
