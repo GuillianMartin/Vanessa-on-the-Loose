@@ -65,8 +65,8 @@ class FlyBehavior:
 static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]:
 	var behaviors: Array[FlyBehavior] = [
 		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 52.0, -66.0, 360.0, 2.4),
-		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.38, 0.32), Color(0.987, 0.96, 0.476, 1.0), 32.0, 66.0, -60.0, 430.0, 1.5),
-		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.36, 0.34), Color(0.725, 0.681, 0.355, 1.0), 52.0, 92.0, -92.0, 290.0, 3.2),
+		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.38, 0.32), Color.WHITE, 32.0, 66.0, -60.0, 430.0, 1.5),
+		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.36, 0.34), Color.WHITE, 52.0, 92.0, -92.0, 290.0, 3.2),
 	]
 
 	if include_mother:
