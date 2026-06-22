@@ -6,21 +6,20 @@ signal finished(hand: Area2D, status: String, payout: int)
 
 const DEFAULT_TEXTURE := preload("res://assets/customer/default_customer/hand_default.png")
 const DAMAGE_TEXTURE := preload("res://assets/customer/default_customer/hand_damage.png")
-const HAND_SCALE := Vector2(0.7, 0.7)
-const FOOD_CARRY_OFFSET := Vector2(0, 120)
-const HIT_RADIUS := 48.0
+const HAND_SCALE := Vector2(1.5, 1.5)
+var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
 const SPEED := 280.0
 const DAMAGE_SHOW_TIME := 0.25 
 
 const MAX_PATIENCE := 100.0
-const PATIENCE_LOSS_FROM_SWAT := 20.0       
-const PATIENCE_LOSS_PER_FLY_SECOND := 1.0   
-const REACH_THRESHOLD := 8.0
+const PATIENCE_LOSS_FROM_SWAT := 50.0       
+const PATIENCE_LOSS_PER_FLY_SECOND := 8.0   
+const REACH_THRESHOLD := 5.0
 
 var target_position := Vector2.ZERO
 var velocity := Vector2.ZERO
 var leaving := false
-var damage_timer := 0.0
+var damage_timer := 2.0
 var leave_status := "" # Stores how they left
 
 var patience := MAX_PATIENCE                
@@ -183,9 +182,12 @@ func _ensure_nodes() -> void:
 
 	if collision_shape == null:
 		collision_shape = CollisionShape2D.new()
-		var circle := CircleShape2D.new()
-		circle.radius = HIT_RADIUS
-		collision_shape.shape = circle
+		var rect := RectangleShape2D.new()
+		# Size the rectangle from the hand texture, applying the hand scale
+		var tex_size := DEFAULT_TEXTURE.get_size()
+		var scaled_size := tex_size * HAND_SCALE
+		rect.extents = scaled_size / 2.0
+		collision_shape.shape = rect
 		add_child(collision_shape)
 
 	if local_patience_bar == null:

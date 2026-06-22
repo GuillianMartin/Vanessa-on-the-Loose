@@ -7,7 +7,7 @@ const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 
-const ROUND_FLY_COUNT := 20
+const ROUND_FLY_COUNT := 10
 const ROUND_FOOD_COUNT := 5
 const TOP_SAFE_AREA := 72.0
 const EDGE_PADDING := 30.0
@@ -449,7 +449,7 @@ func _on_buyer_transaction_finished(hand_node: Area2D, status: String, payout: i
 	# Game endings checking
 	if current_money >= money_goal:
 		_show_menu(score, true)
-	elif buyers_remaining <= 0 and _get_active_customer_count() == 0:
+	elif buyers_remaining <= 0 or _get_active_customer_count() == 0:
 		_show_menu(score, current_money >= money_goal)
 
 func _on_customer_swatted(_hand: Area2D) -> void:

@@ -3,8 +3,8 @@ extends Node
 signal energy_changed(energy: float, max_energy: float)
 
 const MAX_ENERGY := 100.0
-const SWAT_COST := 5.0
-const CUSTOMER_HIT_COST := 40.0
+const SWAT_COST := 1.0
+const CUSTOMER_HIT_COST := 5.0
 
 # Combo variables
 const COMBO_WINDOW := 1.2 # seconds allowed between hits to maintain combo
