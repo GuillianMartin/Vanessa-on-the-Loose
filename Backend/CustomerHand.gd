@@ -6,6 +6,7 @@ signal finished(hand: Area2D, status: String, payout: int)
 
 const DEFAULT_TEXTURE := preload("res://assets/customer/default_customer/hand_default.png")
 const DAMAGE_TEXTURE := preload("res://assets/customer/default_customer/hand_damage.png")
+const HAND_CLOSED_TEXTURE := preload("res://assets/customer/default_customer/hand_closed.png")
 const HAND_SCALE := Vector2(1.5, 1.5)
 var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
 const SPEED := 280.0
@@ -152,7 +153,12 @@ func _trigger_leave(status: String, payout: int) -> void:
 	leaving = true
 	leave_status = status
 	damage_timer = DAMAGE_SHOW_TIME * 2.5
-	sprite.texture = DAMAGE_TEXTURE if status == "disgusted" else DEFAULT_TEXTURE
+	if status == "disgusted":
+		sprite.texture = DAMAGE_TEXTURE
+	elif status == "success":
+		sprite.texture = HAND_CLOSED_TEXTURE
+	else:
+		sprite.texture = DEFAULT_TEXTURE
 	
 	# Emit completion stats immediately so Game.gd updates right away
 	finished.emit(self, status, payout)
@@ -176,7 +182,8 @@ func _complete_transaction() -> void:
 			if target_food.get_node_or_null("Label"):
 				target_food.get_node("Label").visible = false
 
-		# Start moving up with the food item safely, marked as "success"
+		# Show the closed hand texture while carrying the food
+		sprite.texture = HAND_CLOSED_TEXTURE
 		_trigger_leave("success", final_payout)
 	else:
 		_trigger_leave("depleted", 0)
