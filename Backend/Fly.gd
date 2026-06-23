@@ -9,6 +9,9 @@ const FLYING_FLY_TEXTURE := preload("res://assets/Flies/fly_flying.png")
 const EATING_FLY_TEXTURE := preload("res://assets/Flies/fly_eating.png")
 const CHUNKY_FLY_EATING_TEXTURE := preload("res://assets/Flies/chunky_fly/chunky_fly_eating.png")
 const CHUNKY_FLY_FLYING_TEXTURE := preload("res://assets/Flies/chunky_fly/chunky_fly_flying.png")
+const SMALL_FLY_EATING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_eating.png")
+const SMALL_FLY_FLYING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_flying.png")
+
 const FLYING_FRAME_COUNT := 6
 const EATING_FRAME_COUNT := 4
 const FLYING_FRAME_TIME := 0.055
@@ -65,7 +68,7 @@ class FlyBehavior:
 static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]:
 	var behaviors: Array[FlyBehavior] = [
 		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 52.0, -66.0, 360.0, 2.4),
-		FlyBehavior.new("Fast", 2, 230.0, Vector2(0.38, 0.32), Color.WHITE, 32.0, 66.0, -60.0, 430.0, 1.5),
+		FlyBehavior.new("Swarm", 2, 230.0, Vector2(0.38, 0.32), Color.WHITE, 32.0, 66.0, -60.0, 430.0, 1.5),
 		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.36, 0.34), Color.WHITE, 52.0, 92.0, -92.0, 290.0, 3.2),
 	]
 
@@ -158,9 +161,9 @@ func _process(delta: float) -> void:
 		_animate_death_sprite(delta)
 		return
 
-	if sprite.texture in [FLYING_FLY_TEXTURE, CHUNKY_FLY_FLYING_TEXTURE]:
+	if sprite.texture in [FLYING_FLY_TEXTURE, CHUNKY_FLY_FLYING_TEXTURE, SMALL_FLY_FLYING_TEXTURE]:
 		_animate_sprite(delta, _get_flying_frame_count(), FLYING_FRAME_TIME)
-	elif sprite.texture in [EATING_FLY_TEXTURE, CHUNKY_FLY_EATING_TEXTURE]:
+	elif sprite.texture in [EATING_FLY_TEXTURE, CHUNKY_FLY_EATING_TEXTURE, SMALL_FLY_EATING_TEXTURE]:
 		_animate_sprite(delta, EATING_FRAME_COUNT, EATING_FRAME_TIME)
 
 	if knockback_timer > 0.0:
@@ -367,23 +370,34 @@ func _try_spawn_from_food() -> void:
 		spawn_requested.emit(global_position)
 
 func _get_flying_texture() -> Texture2D:
-	if behavior != null and behavior.name == "Tank":
-		return CHUNKY_FLY_FLYING_TEXTURE
+	if behavior != null:
+		if behavior.name == "Tank":
+			return CHUNKY_FLY_FLYING_TEXTURE
+		if behavior.name == "Swarm":
+			return SMALL_FLY_FLYING_TEXTURE
 	return FLYING_FLY_TEXTURE
 
 func _get_eating_texture() -> Texture2D:
-	if behavior != null and behavior.name == "Tank":
-		return CHUNKY_FLY_EATING_TEXTURE
+	if behavior != null:
+		if behavior.name == "Tank":
+			return CHUNKY_FLY_EATING_TEXTURE
+		if behavior.name == "Swarm":
+			return SMALL_FLY_EATING_TEXTURE
 	return EATING_FLY_TEXTURE
 
 func _get_flying_frame_count() -> int:
 	if behavior != null and behavior.name == "Tank":
 		return FLYING_FRAME_COUNT
+	if behavior != null and behavior.name == "Swarm":
+		return FLYING_FRAME_COUNT + 1
 	return FLYING_FRAME_COUNT
 
 func _get_eating_frame_count() -> int:
 	if behavior != null and behavior.name == "Tank":
 		return EATING_FRAME_COUNT + 1
+	if behavior != null and behavior.name == "Swarm":
+		return EATING_FRAME_COUNT
+	
 	return EATING_FRAME_COUNT
 
 func _set_flying_sprite() -> void:
