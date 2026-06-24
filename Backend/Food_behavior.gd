@@ -2,17 +2,27 @@ extends Area2D
 
 signal depleted(food: Area2D)
 
-const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods.gd")
+const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods_Attributes.gd")
+const FOOD_SPAWN_TEXTURE := preload("res://assets/effects/food_spawn.png")
+const FOOD_SPOIL_TEXTURE := preload("res://assets/effects/food_spoil.png")
 
 const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
-var base_price := 15.0
+const SPAWN_FRAME_COUNT := 8
+const SPAWN_DURATION := 1.0
+const SPAWN_FRAME_TIME := SPAWN_DURATION / SPAWN_FRAME_COUNT
+
+const SPOIL_FRAME_COUNT := 22
+const SPOIL_DURATION := 1.2
+const SPOIL_FRAME_TIME := SPOIL_DURATION / SPOIL_FRAME_COUNT
+
 var price_label: Label
 
 class FoodConfig:
 	var name: String
+	var category: String
 	var default_texture: Texture2D
 	var notgood_texture: Texture2D
 	var critical_texture: Texture2D
@@ -21,10 +31,15 @@ class FoodConfig:
 	var max_freshness: float
 	var spoil_rate: float
 	var nutrition: int
-	var base_price: float
+	var base_market_price: float
+	var base_sell_price: float
+	var market_price: float
+	var sell_price: float
+	var tint: Color
 
 	func _init(
 		food_name: String,
+		food_category: String,
 		food_default_texture: Texture2D,
 		food_notgood_texture: Texture2D,
 		food_critical_texture: Texture2D,
@@ -33,9 +48,12 @@ class FoodConfig:
 		food_max_freshness: float,
 		food_spoil_rate: float,
 		food_nutrition: int,
-		food_base_price: float
+		food_base_market_price: float,
+		food_base_sell_price: float,
+		food_tint: Color = Color.WHITE
 	) -> void:
 		name = food_name
+		category = food_category
 		default_texture = food_default_texture
 		notgood_texture = food_notgood_texture
 		critical_texture = food_critical_texture
@@ -44,33 +62,56 @@ class FoodConfig:
 		max_freshness = food_max_freshness
 		spoil_rate = food_spoil_rate
 		nutrition = food_nutrition
-		base_price = food_base_price
+		base_market_price = food_base_market_price
+		base_sell_price = food_base_sell_price
+		market_price = food_base_market_price
+		sell_price = food_base_sell_price
+		tint = food_tint
 
 static func get_food_types() -> Array[FoodConfig]:
 	var food_types: Array[FoodConfig] = []
 	var foods_data := FOODS_SCRIPT.new().Foods
 	for category in foods_data.keys():
 		for food_item in foods_data[category]:
-			food_types.append(_food_config_from_item(food_item))
+			food_types.append(_food_config_from_item(category, food_item))
 	return food_types
 
-static func _food_config_from_item(food_item: Dictionary) -> FoodConfig:
+static func _food_config_from_item(category: String, food_item: Dictionary) -> FoodConfig:
 	var attributes := food_item.get("attributes", {}) as Dictionary
+	var base_market_price := float(attributes.get("base_price", 0.0))
 	return FoodConfig.new(
-		food_item.get("name", ""),
+		str(food_item.get("name", "")),
+		category,
 		food_item["default"].texture,
 		food_item["notgood"].texture,
 		food_item["critical"].texture,
-		attributes.get("visual_size", 0.0),
-		attributes.get("food_radius", 0.0),
-		attributes.get("max_freshness", 0.0),
-		attributes.get("spoil_rate", 0.0),
-		attributes.get("nutrition", 0),
-		attributes.get("base_price", 0.0)
+		float(attributes.get("visual_size", 0.0)),
+		float(attributes.get("food_radius", 0.0)),
+		float(attributes.get("max_freshness", 0.0)),
+		float(attributes.get("spoil_rate", 0.0)),
+		int(attributes.get("nutrition", 0)),
+		base_market_price,
+		ceilf(base_market_price * 1.32),
+		attributes.get("tint", Color.WHITE)
 	)
 
 static func get_random_config() -> FoodConfig:
 	return get_food_types().pick_random()
+
+static func get_random_config_for_category(category: String = "") -> FoodConfig:
+	var food_types := get_food_types()
+	if category == "":
+		return food_types.pick_random()
+
+	var matching: Array[FoodConfig] = []
+	for food_type in food_types:
+		if food_type.category == category:
+			matching.append(food_type)
+
+	if matching.is_empty():
+		return food_types.pick_random()
+
+	return matching.pick_random()
 
 var config: FoodConfig
 var max_freshness := 100.0
@@ -85,6 +126,14 @@ var freshness_bar: ProgressBar
 var current_state := ""
 var critical_frame_timer := 0.0
 
+var spawn_animation_sprite: Sprite2D
+var spawn_animation_timer := 0.0
+var is_spawning := false
+
+var spoil_animation_sprite: Sprite2D
+var spoil_animation_timer := 0.0
+var is_spoiling := false
+
 func _ready() -> void:
 	add_to_group("foods")
 	input_pickable = false
@@ -98,6 +147,22 @@ func configure(new_config: FoodConfig) -> void:
 	config = new_config
 	_apply_config()
 
+func apply_market_modifiers(market_price_multiplier: float, sell_price_multiplier: float, spoil_multiplier: float) -> void:
+	if config == null:
+		return
+
+	config.market_price = ceilf(config.base_market_price * market_price_multiplier)
+	config.sell_price = ceilf(config.base_sell_price * sell_price_multiplier)
+	config.spoil_rate = config.spoil_rate * spoil_multiplier
+	spoil_rate = config.spoil_rate
+	_update_visuals()
+
+func get_stock_cost() -> int:
+	if config == null:
+		return 0
+
+	return int(ceilf(config.market_price))
+
 func eat(amount: float) -> int:
 	if freshness <= 0.0:
 		return 0
@@ -107,8 +172,7 @@ func eat(amount: float) -> int:
 	_update_visuals()
 
 	if freshness <= 0.0:
-		depleted.emit(self)
-		queue_free()
+		_play_spoil_animation()
 
 	return nutrition
 
@@ -116,6 +180,9 @@ func get_radius() -> float:
 	return radius
 
 func _process(delta: float) -> void:
+	_update_spawn_animation(delta)
+	_update_spoil_animation(delta)
+	
 	if freshness <= 0.0:
 		return
 
@@ -124,8 +191,8 @@ func _process(delta: float) -> void:
 	_update_visuals()
 
 	if freshness <= 0.0:
-		depleted.emit(self)
-		queue_free()
+		_play_spoil_animation()
+		return
 
 func _apply_config() -> void:
 	if config == null:
@@ -147,6 +214,7 @@ func _apply_config() -> void:
 	freshness_bar.size = Vector2(maxf(radius * 1.15, 54.0), 6)
 	freshness_bar.position = Vector2(-freshness_bar.size.x * 0.5, radius + 8.0)
 	_update_visuals()
+	_play_spawn_animation()
 
 func _scale_sprite_to_size(target_size: float) -> void:
 	if sprite.texture == null:
@@ -186,6 +254,26 @@ func _ensure_nodes() -> void:
 		price_label.add_theme_constant_override("shadow_offset_y", 1)
 		add_child(price_label)
 
+	if spawn_animation_sprite == null:
+		spawn_animation_sprite = Sprite2D.new()
+		spawn_animation_sprite.texture = FOOD_SPAWN_TEXTURE
+		spawn_animation_sprite.hframes = SPAWN_FRAME_COUNT
+		spawn_animation_sprite.vframes = 1
+		spawn_animation_sprite.frame = 0
+		spawn_animation_sprite.centered = true
+		spawn_animation_sprite.visible = false
+		add_child(spawn_animation_sprite)
+
+	if spoil_animation_sprite == null:
+		spoil_animation_sprite = Sprite2D.new()
+		spoil_animation_sprite.texture = FOOD_SPOIL_TEXTURE
+		spoil_animation_sprite.hframes = SPOIL_FRAME_COUNT
+		spoil_animation_sprite.vframes = 1
+		spoil_animation_sprite.frame = 0
+		spoil_animation_sprite.centered = true
+		spoil_animation_sprite.visible = false
+		add_child(spoil_animation_sprite)
+
 func _update_visuals() -> void:
 	if sprite == null or freshness_bar == null:
 		return
@@ -195,7 +283,7 @@ func _update_visuals() -> void:
 		ratio = clampf(freshness / max_freshness, 0.0, 1.0)
 
 	_update_food_sprite()
-	sprite.modulate = Color.WHITE
+	sprite.modulate = config.tint
 	freshness_bar.max_value = max_freshness
 	freshness_bar.value = freshness
 	freshness_bar.visible = true
@@ -252,4 +340,76 @@ func _animate_critical(delta: float) -> void:
 # Call this helper method to get the value dynamically
 func get_current_value() -> int:
 	var freshness_ratio := freshness / max_freshness
-	return int(config.base_price * freshness_ratio)
+	return int(config.sell_price * freshness_ratio)
+
+func _play_spawn_animation() -> void:
+	is_spawning = true
+	spawn_animation_timer = 0.0
+	if spawn_animation_sprite != null:
+		spawn_animation_sprite.visible = true
+		spawn_animation_sprite.frame = 0
+		# Scale spawn animation to match food size
+		_scale_animation_sprite(spawn_animation_sprite, config.visual_size)
+
+func _update_spawn_animation(delta: float) -> void:
+	if not is_spawning or spawn_animation_sprite == null:
+		return
+
+	spawn_animation_timer += delta
+	
+	# Calculate which frame we should be on
+	var frame_index := int((spawn_animation_timer / SPAWN_FRAME_TIME))
+	
+	if frame_index >= SPAWN_FRAME_COUNT:
+		# Animation finished
+		is_spawning = false
+		spawn_animation_sprite.visible = false
+		return
+
+	spawn_animation_sprite.frame = frame_index
+
+func _play_spoil_animation() -> void:
+	is_spoiling = true
+	spoil_animation_timer = 0.0
+	if spoil_animation_sprite != null:
+		spoil_animation_sprite.visible = true
+		spoil_animation_sprite.frame = 0
+		# Scale spoil animation to match food size
+		_scale_animation_sprite(spoil_animation_sprite, config.visual_size)
+
+func _update_spoil_animation(delta: float) -> void:
+	if not is_spoiling or spoil_animation_sprite == null:
+		return
+
+	spoil_animation_timer += delta
+	
+	# Calculate which frame we should be on
+	var frame_index := int((spoil_animation_timer / SPOIL_FRAME_TIME))
+	
+	if frame_index >= SPOIL_FRAME_COUNT:
+		# Animation finished, emit depleted signal and queue for deletion
+		is_spoiling = false
+		spoil_animation_sprite.visible = false
+		depleted.emit(self)
+		queue_free()
+		return
+
+	spoil_animation_sprite.frame = frame_index
+
+func _scale_animation_sprite(anim_sprite: Sprite2D, target_size: float) -> void:
+	if anim_sprite.texture == null:
+		return
+
+	var texture_size := anim_sprite.texture.get_size()
+	if texture_size.y <= 0:
+		return
+	
+	# For sprite sheets, get the size of one frame
+	var frame_width := texture_size.x / anim_sprite.hframes
+	var frame_height := texture_size.y / anim_sprite.vframes
+	var longest_side: float = maxf(frame_width, frame_height)
+	
+	if longest_side <= 0.0:
+		return
+
+	anim_sprite.scale = Vector2.ONE * (target_size / longest_side)

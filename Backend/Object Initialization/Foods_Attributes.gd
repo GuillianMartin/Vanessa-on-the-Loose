@@ -17,7 +17,8 @@ func create_food_attributes(
 	food_spoil_rate: float,
 	food_nutrition: int,
 	food_radius: float,
-	food_base_price: float
+	food_base_price: float,
+	food_tint: Color = Color.WHITE
 ) -> Dictionary:
 	return {
 		"name": food_name,
@@ -26,7 +27,8 @@ func create_food_attributes(
 		"spoil_rate": food_spoil_rate,
 		"nutrition": food_nutrition,
 		"food_radius": food_radius,
-		"base_price": food_base_price
+		"base_price": food_base_price,
+		"tint": food_tint
 	}
 
 var Foods := {
@@ -74,6 +76,41 @@ var Foods := {
 				1,
 				48.0 * FOOD_SIZE_MULT,
 				11.0
+			)
+		},
+	],
+
+	"Fruit": [
+		{
+			"name": "Mango",
+			"default": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Mango",
+				96.0 * FOOD_SIZE_MULT,
+				88.0,
+				0.72,
+				1,
+				48.0 * FOOD_SIZE_MULT,
+				18.0,
+				Color(1.0, 0.78, 0.24)
+			)
+		},
+		{
+			"name": "Calamansi",
+			"default": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Calamansi",
+				82.0 * FOOD_SIZE_MULT,
+				82.0,
+				0.78,
+				1,
+				42.0 * FOOD_SIZE_MULT,
+				14.0,
+				Color(0.72, 1.0, 0.34)
 			)
 		},
 	],

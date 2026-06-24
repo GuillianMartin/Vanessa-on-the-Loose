@@ -5,12 +5,7 @@ extends Area2D
 signal died(fly: Area2D)
 signal spawn_requested(position: Vector2)
 
-const FLYING_FLY_TEXTURE := preload("res://assets/Flies/fly_flying.png")
-const EATING_FLY_TEXTURE := preload("res://assets/Flies/fly_eating.png")
-const CHUNKY_FLY_EATING_TEXTURE := preload("res://assets/Flies/chunky_fly/chunky_fly_eating.png")
-const CHUNKY_FLY_FLYING_TEXTURE := preload("res://assets/Flies/chunky_fly/chunky_fly_flying.png")
-const SMALL_FLY_EATING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_eating.png")
-const SMALL_FLY_FLYING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_flying.png")
+const FLY_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/Fly_Attirbutes.gd")
 
 const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
 
@@ -28,6 +23,8 @@ const BITE_INTERVAL := 0.65
 const KNOCKBACK_TIME := 0.28
 const MOTHER_SPAWN_BITE_THRESHOLD := 4
 const MOTHER_SPAWN_CHANCE := 0.45
+const BLINK_MIN_TIME := 1.6
+const BLINK_MAX_TIME := 3.2
 
 class FlyBehavior:
 	var name: String
@@ -41,6 +38,12 @@ class FlyBehavior:
 	var knockback_strength: float
 	var eat_time_limit: float
 	var can_spawn: bool
+	var bite_damage_multiplier: float
+	var unlock_day: int
+	var flying_texture: Texture2D
+	var eating_texture: Texture2D
+	var flying_frame_count: int
+	var eating_frame_count: int
 
 	func _init(
 		behavior_name: String,
@@ -53,7 +56,13 @@ class FlyBehavior:
 		behavior_health_bar_y: float,
 		behavior_knockback_strength: float,
 		behavior_eat_time_limit: float,
-		behavior_can_spawn: bool = false
+		behavior_can_spawn: bool = false,
+		behavior_bite_damage_multiplier: float = 1.0,
+		behavior_unlock_day: int = 1,
+		behavior_flying_texture: Texture2D = null,
+		behavior_eating_texture: Texture2D = null,
+		behavior_flying_frame_count: int = FLYING_FRAME_COUNT,
+		behavior_eating_frame_count: int = EATING_FRAME_COUNT
 	) -> void:
 		name = behavior_name
 		max_health = behavior_health
@@ -66,21 +75,97 @@ class FlyBehavior:
 		knockback_strength = behavior_knockback_strength
 		eat_time_limit = behavior_eat_time_limit
 		can_spawn = behavior_can_spawn
+		bite_damage_multiplier = behavior_bite_damage_multiplier
+		unlock_day = behavior_unlock_day
+		flying_texture = behavior_flying_texture
+		eating_texture = behavior_eating_texture
+		flying_frame_count = behavior_flying_frame_count
+		eating_frame_count = behavior_eating_frame_count
 
-static func get_behavior_list(include_mother: bool = true) -> Array[FlyBehavior]:
-	var behaviors: Array[FlyBehavior] = [
-		FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 52.0, -66.0, 360.0, 2.4),
-		FlyBehavior.new("Swarm", 2, 230.0, Vector2(0.38, 0.32), Color.WHITE, 32.0, 66.0, -60.0, 430.0, 1.5),
-		FlyBehavior.new("Tank", 5, 75.0, Vector2(0.36, 0.34), Color.WHITE, 52.0, 92.0, -92.0, 290.0, 3.2),
-	]
+static func get_behavior_list(include_mother: bool = true, day: int = 1, event: Dictionary = {}) -> Array[FlyBehavior]:
+	var behaviors := _get_all_behaviors()
+	var unlocked: Array[FlyBehavior] = []
+	for behavior in behaviors:
+		var is_spawner_type := behavior.name == "Mother" or behavior.name == "Queen"
+		if behavior.unlock_day <= day and (include_mother or not is_spawner_type):
+			unlocked.append(_scaled_behavior_for_day(behavior, day, event))
 
-	if include_mother:
-		behaviors.append(get_mother_behavior())
-
-	return behaviors
+	return unlocked
 
 static func get_mother_behavior() -> FlyBehavior:
-	return FlyBehavior.new("Mother", 4, 95.0, Vector2(0.58, 0.46), Color(0.75, 1.0, 0.78), 66.0, 88.0, -86.0, 320.0, 3.0, true)
+	for behavior in _get_all_behaviors():
+		if behavior.name == "Mother":
+			return behavior
+
+	return _get_fallback_behavior()
+
+static func _get_all_behaviors() -> Array[FlyBehavior]:
+	var behaviors: Array[FlyBehavior] = []
+	var flies_data := FLY_ATTRIBUTES_SCRIPT.new().Flies
+	for category in flies_data.keys():
+		for fly_item in flies_data[category]:
+			behaviors.append(_behavior_from_item(fly_item))
+	return behaviors
+
+static func _behavior_from_item(fly_item: Dictionary) -> FlyBehavior:
+	var attributes := fly_item.get("attributes", {}) as Dictionary
+	var flying_asset = fly_item.get("flying")
+	var eating_asset = fly_item.get("eating")
+	var image_scale: Vector2 = attributes.get("image_scale", Vector2.ONE)
+	var tint: Color = attributes.get("tint", Color.WHITE)
+	var flying_texture: Texture2D = flying_asset.texture if flying_asset != null else null
+	var eating_texture: Texture2D = eating_asset.texture if eating_asset != null else null
+	var flying_frame_count := int(flying_asset.frame_count) if flying_asset != null else FLYING_FRAME_COUNT
+	var eating_frame_count := int(eating_asset.frame_count) if eating_asset != null else EATING_FRAME_COUNT
+	return FlyBehavior.new(
+		str(attributes.get("name", fly_item.get("name", ""))),
+		int(attributes.get("max_health", 1)),
+		float(attributes.get("speed", 100.0)),
+		image_scale,
+		tint,
+		float(attributes.get("hitbox_radius", 48.0)),
+		float(attributes.get("health_bar_width", 52.0)),
+		float(attributes.get("health_bar_y", -66.0)),
+		float(attributes.get("knockback_strength", 320.0)),
+		float(attributes.get("eat_time_limit", 2.4)),
+		bool(attributes.get("can_spawn", false)),
+		float(attributes.get("bite_damage_multiplier", 1.0)),
+		int(attributes.get("unlock_day", 1)),
+		flying_texture,
+		eating_texture,
+		flying_frame_count,
+		eating_frame_count
+	)
+
+static func _scaled_behavior_for_day(behavior: FlyBehavior, day: int, event: Dictionary) -> FlyBehavior:
+	var health_multiplier := float(event.get("fly_health_multiplier", 1.0))
+	var speed_multiplier := float(event.get("fly_speed_multiplier", 1.0))
+	return FlyBehavior.new(
+		behavior.name,
+		int(ceilf(float(behavior.max_health) * health_multiplier + float(day) * 0.15)),
+		(behavior.speed + float(day) * 3.0) * speed_multiplier,
+		behavior.image_scale,
+		behavior.tint,
+		behavior.hitbox_radius,
+		behavior.health_bar_width,
+		behavior.health_bar_y,
+		behavior.knockback_strength,
+		maxf(behavior.eat_time_limit - float(day) * 0.01, 0.85),
+		behavior.can_spawn,
+		behavior.bite_damage_multiplier,
+		behavior.unlock_day,
+		behavior.flying_texture,
+		behavior.eating_texture,
+		behavior.flying_frame_count,
+		behavior.eating_frame_count
+	)
+
+static func _get_fallback_behavior() -> FlyBehavior:
+	var behaviors := _get_all_behaviors()
+	if behaviors.is_empty():
+		return FlyBehavior.new("Normal", 2, 120.0, Vector2(0.48, 0.40), Color.WHITE, 48.0, 52.0, -66.0, 360.0, 2.4)
+
+	return behaviors[0]
 
 var behavior: FlyBehavior
 var health := 1
@@ -97,6 +182,7 @@ var sprite_frame_timer := 0.0
 var eating_time := 0.0
 var is_dying := false
 var death_frame_index := 0
+var blink_timer := 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -115,11 +201,22 @@ func _ready() -> void:
 	else:
 		_apply_behavior()
 
-func get_random_behavior(include_mother: bool = true) -> FlyBehavior:
-	return get_behavior_list(include_mother).pick_random()
+func get_random_behavior(include_mother: bool = true, day: int = 1, event: Dictionary = {}) -> FlyBehavior:
+	var behaviors := get_behavior_list(include_mother, day, event)
+	if behaviors.is_empty():
+		return _scaled_behavior_for_day(_get_fallback_behavior(), day, event)
 
-func get_forced_mother_behavior() -> FlyBehavior:
-	return get_mother_behavior()
+	var fly_weights := event.get("fly_weights", {}) as Dictionary
+	var weighted: Array[FlyBehavior] = []
+	for candidate in behaviors:
+		var weight := int(fly_weights.get(candidate.name, 1))
+		for _index in range(maxi(weight, 1)):
+			weighted.append(candidate)
+
+	return weighted.pick_random()
+
+func get_forced_mother_behavior(day: int = 1, event: Dictionary = {}) -> FlyBehavior:
+	return _scaled_behavior_for_day(get_mother_behavior(), day, event)
 
 func configure(new_behavior: FlyBehavior, bounds: Rect2) -> void:
 	behavior = new_behavior
@@ -129,6 +226,7 @@ func configure(new_behavior: FlyBehavior, bounds: Rect2) -> void:
 	click_streak = 0
 	bites_since_spawn = 0
 	eating_time = 0.0
+	blink_timer = randf_range(BLINK_MIN_TIME, BLINK_MAX_TIME)
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * behavior.speed
 
 	if is_node_ready():
@@ -163,10 +261,10 @@ func _process(delta: float) -> void:
 		_animate_death_sprite(delta)
 		return
 
-	if sprite.texture in [FLYING_FLY_TEXTURE, CHUNKY_FLY_FLYING_TEXTURE, SMALL_FLY_FLYING_TEXTURE]:
+	if sprite.texture == _get_flying_texture():
 		_animate_sprite(delta, _get_flying_frame_count(), FLYING_FRAME_TIME)
-	elif sprite.texture in [EATING_FLY_TEXTURE, CHUNKY_FLY_EATING_TEXTURE, SMALL_FLY_EATING_TEXTURE]:
-		_animate_sprite(delta, EATING_FRAME_COUNT, EATING_FRAME_TIME)
+	elif sprite.texture == _get_eating_texture():
+		_animate_sprite(delta, _get_eating_frame_count(), EATING_FRAME_TIME)
 
 	if knockback_timer > 0.0:
 		knockback_timer -= delta
@@ -177,6 +275,9 @@ func _process(delta: float) -> void:
 			target_food = null
 			target_refresh_timer = 0.0
 		return
+
+	if behavior != null and behavior.name == "Blink":
+		_process_blink(delta)
 
 	target_refresh_timer -= delta
 	if not _is_food_valid(target_food) or target_refresh_timer <= 0.0:
@@ -254,7 +355,8 @@ func _move_to_food(delta: float) -> void:
 	bite_timer -= delta
 	if bite_timer <= 0.0:
 		bite_timer = BITE_INTERVAL
-		var healing: int = target_food.call("eat", BITE_DAMAGE)
+		var bite_damage := BITE_DAMAGE * behavior.bite_damage_multiplier
+		var healing: int = target_food.call("eat", bite_damage)
 		if healing > 0:
 			health = mini(health + healing, behavior.max_health)
 			_update_health_bar()
@@ -282,10 +384,15 @@ func _keep_inside_bounds() -> void:
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var swatter := _get_swatter()
-		if swatter != null and not swatter.call("can_attack"):
-			return
+		if swatter != null:
+			var swat_is_active := swatter.has_method("is_swat_active") and bool(swatter.call("is_swat_active"))
+			if not swat_is_active and not swatter.call("swat"):
+				return
 
-		take_damage(1)
+		var damage_amount := 1
+		if swatter != null and swatter.has_method("get_damage"):
+			damage_amount = int(swatter.call("get_damage"))
+		take_damage(damage_amount)
 
 func take_damage(amount: int) -> void:
 	health -= amount
@@ -371,35 +478,37 @@ func _try_spawn_from_food() -> void:
 	if randf() <= MOTHER_SPAWN_CHANCE:
 		spawn_requested.emit(global_position)
 
+func _process_blink(delta: float) -> void:
+	blink_timer -= delta
+	if blink_timer > 0.0:
+		return
+
+	blink_timer = randf_range(BLINK_MIN_TIME, BLINK_MAX_TIME)
+	if _is_food_valid(target_food) and global_position.distance_to(target_food.global_position) <= _get_eat_distance() * 1.4:
+		return
+
+	var blink_offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(90.0, 160.0)
+	position += blink_offset
+	_keep_inside_bounds()
+
 func _get_flying_texture() -> Texture2D:
 	if behavior != null:
-		if behavior.name == "Tank":
-			return CHUNKY_FLY_FLYING_TEXTURE
-		if behavior.name == "Swarm":
-			return SMALL_FLY_FLYING_TEXTURE
-	return FLYING_FLY_TEXTURE
+		return behavior.flying_texture
+	return null
 
 func _get_eating_texture() -> Texture2D:
 	if behavior != null:
-		if behavior.name == "Tank":
-			return CHUNKY_FLY_EATING_TEXTURE
-		if behavior.name == "Swarm":
-			return SMALL_FLY_EATING_TEXTURE
-	return EATING_FLY_TEXTURE
+		return behavior.eating_texture
+	return null
 
 func _get_flying_frame_count() -> int:
-	if behavior != null and behavior.name == "Tank":
-		return FLYING_FRAME_COUNT
-	if behavior != null and behavior.name == "Swarm":
-		return FLYING_FRAME_COUNT + 1
+	if behavior != null:
+		return behavior.flying_frame_count
 	return FLYING_FRAME_COUNT
 
 func _get_eating_frame_count() -> int:
-	if behavior != null and behavior.name == "Tank":
-		return EATING_FRAME_COUNT + 1
-	if behavior != null and behavior.name == "Swarm":
-		return EATING_FRAME_COUNT
-	
+	if behavior != null:
+		return behavior.eating_frame_count
 	return EATING_FRAME_COUNT
 
 func _set_flying_sprite() -> void:

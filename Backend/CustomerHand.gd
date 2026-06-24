@@ -26,6 +26,8 @@ var patience := MAX_PATIENCE
 var target_food: Node2D = null
 var has_reached_target := false
 var flash_hurt_timer := 0.0
+var patience_drain_multiplier := 1.0
+var payout_multiplier := 1.0
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
@@ -38,9 +40,11 @@ func _ready() -> void:
 	_ensure_nodes()
 	add_to_group("customers")
 
-func configure(start_position: Vector2, food_node: Node2D) -> void:
+func configure(start_position: Vector2, food_node: Node2D, new_patience_drain_multiplier: float = 1.0, new_payout_multiplier: float = 1.0) -> void:
 	position = start_position
 	target_food = food_node
+	patience_drain_multiplier = new_patience_drain_multiplier
+	payout_multiplier = new_payout_multiplier
 	
 	if is_instance_valid(target_food):
 		target_position = target_food.global_position
@@ -59,12 +63,11 @@ func _get_hitbox_extents(node: Node2D) -> Vector2:
 	var food_cs := node.get_node_or_null("CollisionShape2D")
 	if food_cs and food_cs.shape:
 		if food_cs.shape is RectangleShape2D:
-			var temp = (food_cs.shape.radius / 3)
-			return Vector2(temp, temp)
+			return food_cs.shape.extents / 3.0
 			
 		if food_cs.shape is CircleShape2D:
-			var temp = (food_cs.shape.radius / 3)
-			return temp
+			var temp = food_cs.shape.radius / 3.0
+			return Vector2(temp, temp)
 	return Vector2.ZERO
 
 func _process(delta: float) -> void:
@@ -133,7 +136,7 @@ func _process_fly_contamination(delta: float) -> void:
 
 	if fly_count > 0:
 		# Directly ticks down patience based on current local nesting pests
-		decrease_patience(PATIENCE_LOSS_PER_FLY_SECOND * fly_count * delta)
+		decrease_patience(PATIENCE_LOSS_PER_FLY_SECOND * fly_count * patience_drain_multiplier * delta)
 
 func decrease_patience(amount: float) -> void:
 	if leaving:
@@ -166,11 +169,12 @@ func _complete_transaction() -> void:
 	if is_instance_valid(target_food):
 		var product_value: int = target_food.call("get_current_value")
 		var satisfaction_modifier := patience / MAX_PATIENCE
-		var final_payout := int(float(product_value) * satisfaction_modifier)
+		var final_payout := int(float(product_value) * satisfaction_modifier * payout_multiplier)
 
 		var food_container = target_food.get_parent()
 		if food_container:
 			food_container.remove_child(target_food)
+			target_food.remove_from_group("foods")
 			target_food.z_index = -1
 			add_child(target_food)
 			target_food.position = FOOD_CARRY_OFFSET
@@ -193,7 +197,10 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var swatter := _get_swatter()
-		if swatter == null or not swatter.call("can_attack"):
+		if swatter == null:
+			return
+		var swat_is_active := swatter.has_method("is_swat_active") and bool(swatter.call("is_swat_active"))
+		if not swat_is_active and not swatter.call("swat"):
 			return
 
 		swatted.emit(self)
