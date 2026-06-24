@@ -252,4 +252,4 @@ func _animate_critical(delta: float) -> void:
 # Call this helper method to get the value dynamically
 func get_current_value() -> int:
 	var freshness_ratio := freshness / max_freshness
-	return int(base_price * freshness_ratio)
+	return int(config.base_price * freshness_ratio)
