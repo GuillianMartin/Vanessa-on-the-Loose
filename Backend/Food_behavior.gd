@@ -11,11 +11,11 @@ const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
 const SPAWN_FRAME_COUNT := 8
-const SPAWN_DURATION := 0.8
+const SPAWN_DURATION := 0.6
 const SPAWN_FRAME_TIME := SPAWN_DURATION / SPAWN_FRAME_COUNT
 
 const SPOIL_FRAME_COUNT := 22
-const SPOIL_DURATION := 1.6
+const SPOIL_DURATION := 1.2
 const SPOIL_FRAME_TIME := SPOIL_DURATION / SPOIL_FRAME_COUNT
 
 var price_label: Label
@@ -133,6 +133,7 @@ var is_spawning := false
 var spoil_animation_sprite: Sprite2D
 var spoil_animation_timer := 0.0
 var is_spoiling := false
+var is_spoil_pending := false
 
 func _ready() -> void:
 	add_to_group("foods")
@@ -286,7 +287,7 @@ func _update_visuals() -> void:
 	sprite.modulate = config.tint
 	freshness_bar.max_value = max_freshness
 	freshness_bar.value = freshness
-	freshness_bar.visible = not is_spawning and not is_spoiling
+	freshness_bar.visible = not is_spawning and not is_spoiling and not is_spoil_pending
 	
 	# Update the value text dynamically every frame
 	if price_label:
@@ -294,7 +295,73 @@ func _update_visuals() -> void:
 		# Position it slightly below the freshness health bar
 		price_label.position = Vector2(-50, radius + 16.0)
 		price_label.custom_minimum_size = Vector2(100, 20)
-		price_label.visible = not is_spawning and not is_spoiling
+		price_label.visible = not is_spawning and not is_spoiling and not is_spoil_pending
+
+func _get_sprite_scale_for_size(target_size: float) -> Vector2:
+	if sprite == null or sprite.texture == null:
+		return Vector2.ONE
+
+	var texture_size := sprite.texture.get_size()
+	var longest_side: float = maxf(texture_size.x, texture_size.y)
+	if longest_side <= 0.0:
+		return Vector2.ONE
+
+	return Vector2.ONE * (target_size / longest_side)
+
+func _ease_in_food() -> void:
+	if sprite == null:
+		return
+
+	var target_size := config.visual_size
+	if current_state == "critical":
+		target_size *= CRITICAL_SIZE_MULT
+
+	var target_scale := _get_sprite_scale_for_size(target_size)
+	sprite.scale = Vector2.ZERO
+	sprite.visible = true
+	if freshness_bar != null:
+		freshness_bar.visible = true
+	if price_label != null:
+		price_label.visible = true
+
+	var tween := create_tween()
+	tween.tween_property(sprite, "scale", target_scale, 0.1)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+
+func _ease_out_food() -> void:
+	if sprite == null:
+		_on_food_eased_out()
+		return
+
+	create_tween()
+	var tween := create_tween()
+	tween.tween_property(sprite, "scale", Vector2.ZERO, 0.1)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_IN)
+	tween.connect("finished", Callable(self, "_on_food_eased_out"))
+
+func _on_food_eased_out() -> void:
+	is_spoil_pending = false
+	if sprite != null:
+		sprite.visible = false
+	_start_spoil_animation()
+
+func _start_spoil_animation() -> void:
+	is_spoiling = true
+	spoil_animation_timer = 0.0
+	if freshness_bar != null:
+		freshness_bar.visible = false
+	if price_label != null:
+		price_label.visible = false
+	if spoil_animation_sprite != null:
+		spoil_animation_sprite.visible = true
+		spoil_animation_sprite.frame = 0
+		# Position spoil animation slightly above the food
+		if sprite != null:
+			spoil_animation_sprite.position = sprite.position + Vector2(0, -90)
+		# Scale spoil animation to match food size
+		_scale_animation_sprite(spoil_animation_sprite, config.visual_size * 2)
 
 func _update_food_sprite(force: bool = false) -> void:
 	if config == null or sprite == null:
@@ -371,30 +438,24 @@ func _update_spawn_animation(delta: float) -> void:
 		# Animation finished
 		is_spawning = false
 		spawn_animation_sprite.visible = false
-		if sprite != null:
-			sprite.visible = true
-		if freshness_bar != null:
-			freshness_bar.visible = true
-		if price_label != null:
-			price_label.visible = true
+		_ease_in_food()
 		return
 
 	spawn_animation_sprite.frame = frame_index
 
 func _play_spoil_animation() -> void:
-	is_spoiling = true
-	spoil_animation_timer = 1.0
-	if sprite != null:
-		sprite.visible = false
-	if freshness_bar != null:
-		freshness_bar.visible = false
-	if price_label != null:
-		price_label.visible = false
-	if spoil_animation_sprite != null:
-		spoil_animation_sprite.visible = true
-		spoil_animation_sprite.frame = 0
-		# Scale spoil animation to match food size
-		_scale_animation_sprite(spoil_animation_sprite, config.visual_size * 2)
+	if is_spoiling or is_spoil_pending:
+		return
+
+	if sprite != null and sprite.visible:
+		is_spoil_pending = true
+		if freshness_bar != null:
+			freshness_bar.visible = false
+		if price_label != null:
+			price_label.visible = false
+		_ease_out_food()
+	else:
+		_start_spoil_animation()
 
 func _update_spoil_animation(delta: float) -> void:
 	if not is_spoiling or spoil_animation_sprite == null:
