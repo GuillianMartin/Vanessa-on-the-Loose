@@ -9,9 +9,8 @@ const DAMAGE_TEXTURE := preload("res://assets/customer/default_customer/hand_dam
 const HAND_CLOSED_TEXTURE := preload("res://assets/customer/default_customer/hand_closed.png")
 const HAND_SCALE := Vector2(1.5, 1.5)
 var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
-const SPEED := 280.0
 const DAMAGE_SHOW_TIME := 0.25 
-
+const SPEED := 280.0
 const MAX_PATIENCE := 100.0
 const PATIENCE_LOSS_FROM_SWAT := 50.0       
 const PATIENCE_LOSS_PER_FLY_SECOND := 8.0   

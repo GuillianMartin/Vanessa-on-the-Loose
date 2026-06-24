@@ -2,27 +2,8 @@ extends Area2D
 
 signal depleted(food: Area2D)
 
-const MEAT_DEFAULT_PATH := "res://assets/Foods/Meat/Pork/default.png"
+const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods.gd")
 
-const PORK_DEFAULT_PATH := "res://assets/Foods/Meat/Pork/default.png"
-const PORK_NOTGOOD_PATH := "res://assets/Foods/Meat/Pork/notgood.png"
-const PORK_CRITICAL_PATH := "res://assets/Foods/Meat/Pork/critical.png"
-
-const CARROT_DEFAULT_PATH := "res://assets/Foods/Vegetable/carrot/default.png"
-const CARROT_NOTGOOD_PATH := "res://assets/Foods/Vegetable/carrot/notgood.png"
-const CARROT_CRITICAL_PATH := "res://assets/Foods/Vegetable/carrot/critical.png"
-const CABBAGE_DEFAULT_PATH := "res://assets/Foods/Vegetable/cabbage/default.png"
-const CABBAGE_NOTGOOD_PATH := "res://assets/Foods/Vegetable/cabbage/notgood.png"
-const CABBAGE_CRITICAL_PATH := "res://assets/Foods/Vegetable/cabbage/critical.png"
-const TOMATO_DEFAULT_PATH := "res://assets/Foods/Vegetable/tomato/default.png"
-const TOMATO_NOTGOOD_PATH := "res://assets/Foods/Vegetable/tomato/notgood.png"
-const TOMATO_CRITICAL_PATH := "res://assets/Foods/Vegetable/tomato/critical.png"
-const CHICKEN_DEFAULT_PATH := "res://assets/Foods/Meat/Chicken/default.png"
-const CHICKEN_NOTGOOD_PATH := "res://assets/Foods/Meat/Chicken/notgood.png"
-const CHICKEN_CRITICAL_PATH := "res://assets/Foods/Meat/Chicken/critical.png"
-
-
-const FOOD_SIZE_MULT := 2.5
 const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
@@ -36,11 +17,11 @@ class FoodConfig:
 	var notgood_texture: Texture2D
 	var critical_texture: Texture2D
 	var visual_size: float
+	var radius: float
 	var max_freshness: float
 	var spoil_rate: float
 	var nutrition: int
-	var radius: float
-	var base_price: float # <-- Add this
+	var base_price: float
 
 	func _init(
 		food_name: String,
@@ -48,42 +29,48 @@ class FoodConfig:
 		food_notgood_texture: Texture2D,
 		food_critical_texture: Texture2D,
 		food_visual_size: float,
+		food_radius: float,
 		food_max_freshness: float,
 		food_spoil_rate: float,
 		food_nutrition: int,
-		food_radius: float,
-		food_base_price: float # <-- Add this
+		food_base_price: float
 	) -> void:
 		name = food_name
 		default_texture = food_default_texture
 		notgood_texture = food_notgood_texture
 		critical_texture = food_critical_texture
 		visual_size = food_visual_size
+		radius = food_radius
 		max_freshness = food_max_freshness
 		spoil_rate = food_spoil_rate
 		nutrition = food_nutrition
-		radius = food_radius
 		base_price = food_base_price
 
 static func get_food_types() -> Array[FoodConfig]:
-	return [
-		# Formats: Name, Default, NotGood, Critical, VisualSize, MaxFreshness, SpoilRate, Nutrition, Radius, BasePrice
-		FoodConfig.new("Pork", _load_texture(PORK_DEFAULT_PATH), _load_texture(PORK_NOTGOOD_PATH), _load_texture(PORK_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
-		FoodConfig.new("Chicken", _load_texture(CHICKEN_DEFAULT_PATH), _load_texture(CHICKEN_NOTGOOD_PATH), _load_texture(CHICKEN_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
-		FoodConfig.new("Carrot", _load_texture(CARROT_DEFAULT_PATH), _load_texture(CARROT_NOTGOOD_PATH), _load_texture(CARROT_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 95.0, 0.6, 1, 50.0 * FOOD_SIZE_MULT, 25.0),
-		FoodConfig.new("Cabbage", _load_texture(CABBAGE_DEFAULT_PATH), _load_texture(CABBAGE_NOTGOOD_PATH), _load_texture(CABBAGE_CRITICAL_PATH), 100.0 * FOOD_SIZE_MULT, 105.0, 0.5, 1, 50.0 * FOOD_SIZE_MULT, 35.0),
-		FoodConfig.new("Tomato", _load_texture(TOMATO_DEFAULT_PATH), _load_texture(TOMATO_NOTGOOD_PATH), _load_texture(TOMATO_CRITICAL_PATH), 96.0 * FOOD_SIZE_MULT, 90.0, 0.55, 1, 48.0 * FOOD_SIZE_MULT, 30.0),
-	]
+	var food_types: Array[FoodConfig] = []
+	var foods_data := FOODS_SCRIPT.new().Foods
+	for category in foods_data.keys():
+		for food_item in foods_data[category]:
+			food_types.append(_food_config_from_item(food_item))
+	return food_types
+
+static func _food_config_from_item(food_item: Dictionary) -> FoodConfig:
+	var attributes := food_item.get("attributes", {}) as Dictionary
+	return FoodConfig.new(
+		food_item.get("name", ""),
+		food_item["default"].texture,
+		food_item["notgood"].texture,
+		food_item["critical"].texture,
+		attributes.get("visual_size", 0.0),
+		attributes.get("food_radius", 0.0),
+		attributes.get("max_freshness", 0.0),
+		attributes.get("spoil_rate", 0.0),
+		attributes.get("nutrition", 0),
+		attributes.get("base_price", 0.0)
+	)
 
 static func get_random_config() -> FoodConfig:
 	return get_food_types().pick_random()
-
-static func _load_texture(path: String) -> Texture2D:
-	var resource := load(path)
-	if resource is Texture2D:
-		return resource as Texture2D
-
-	return null
 
 var config: FoodConfig
 var max_freshness := 100.0

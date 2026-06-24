@@ -12,11 +12,13 @@ const CHUNKY_FLY_FLYING_TEXTURE := preload("res://assets/Flies/chunky_fly/chunky
 const SMALL_FLY_EATING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_eating.png")
 const SMALL_FLY_FLYING_TEXTURE := preload("res://assets/Flies/small_fly/small_fly_flying.png")
 
+const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
+
 const FLYING_FRAME_COUNT := 6
 const EATING_FRAME_COUNT := 4
 const FLYING_FRAME_TIME := 0.055
 const EATING_FRAME_TIME := 0.08
-const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
+
 const KILL_SPRITE_FRAME_COUNT := 6
 const KILL_SPRITE_FRAME_TIME := 0.08
 const TARGET_REFRESH_TIME := 0.7
