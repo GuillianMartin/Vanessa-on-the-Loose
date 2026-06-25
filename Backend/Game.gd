@@ -18,6 +18,7 @@ const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
 const UPGRADE_MONEY_RESERVE := 500
+const LEFTOVER_FOOD_FLY_BONUS_PER_KILL := 0.01
 
 var game_timer := 0.0
 var market_day := 1
@@ -35,6 +36,7 @@ var total_customers_served := 0
 var day_money_start := 0
 var day_money_earned := 0
 var day_stock_spent := 0
+var day_leftover_earned := 0
 var day_flies_killed := 0
 var day_customers_served := 0
 var day_reputation_start := 0
@@ -52,6 +54,7 @@ var customer_container: Node2D
 var container_area: Area2D
 var container_polygon: CollisionPolygon2D
 var container_sprite: Sprite2D
+var background_sprite: Sprite2D
 var hud_layer: CanvasLayer
 var menu_layer: CanvasLayer
 
@@ -131,11 +134,13 @@ func _maintain_fly_loop() -> void:
 	_update_hud()
 
 func _build_game_nodes() -> void:
+	background_sprite = get_node_or_null("BackgroundVegetable") as Sprite2D
+
 	container_area = get_node_or_null("Container") as Area2D
 	if container_area != null:
 		container_area.z_index = -10
 		container_polygon = container_area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
-		container_sprite = container_area.get_node_or_null("Sprite2D") as Sprite2D
+		container_sprite = container_area.get_node_or_null("ContainerVegetable") as Sprite2D
 
 	food_container = Node2D.new()
 	food_container.name = "Food"
@@ -363,6 +368,7 @@ func _start_day() -> void:
 	day_money_start = current_money
 	day_money_earned = 0
 	day_stock_spent = 0
+	day_leftover_earned = 0
 	day_flies_killed = 0
 	day_customers_served = 0
 	day_reputation_start = reputation
@@ -391,6 +397,7 @@ func _start_day() -> void:
 func _complete_day() -> void:
 	day_active = false
 	_set_swatter_active(false)
+	day_leftover_earned = _sell_leftover_food()
 	_clear_flies()
 	_clear_food()
 	_clear_customers()
@@ -401,8 +408,9 @@ func _complete_day() -> void:
 	menu_layer.visible = true
 	hud_layer.visible = false
 	menu_title.text = "Day %d Complete" % market_day
-	result_label.text = "Money earned: $%d\nStock bought: $%d\nNet profit: $%d\nFlies killed: %d\nCustomers served: %d\nMarket Reputation: %+d" % [
+	result_label.text = "Money earned: $%d\nLeftover stock: $%d\nStock bought: $%d\nNet profit: $%d\nFlies killed: %d\nCustomers served: %d\nMarket Reputation: %+d" % [
 		day_money_earned,
+		day_leftover_earned,
 		day_stock_spent,
 		net_profit,
 		day_flies_killed,
@@ -411,6 +419,24 @@ func _complete_day() -> void:
 	]
 	market_day += 1
 	play_button.text = "Start Day %d" % market_day
+
+func _sell_leftover_food() -> int:
+	if food_container == null:
+		return 0
+
+	var fly_bonus_multiplier := 1.0 + float(day_flies_killed) * LEFTOVER_FOOD_FLY_BONUS_PER_KILL
+	var payout := 0
+	for food in food_container.get_children():
+		if food == null or food.is_queued_for_deletion():
+			continue
+		if not food.has_method("get_fresh_sell_value"):
+			continue
+		var fresh_value := int(food.call("get_fresh_sell_value"))
+		payout += int(ceilf(float(fresh_value) * fly_bonus_multiplier))
+
+	current_money += payout
+	day_money_earned += payout
+	return payout
 
 func _game_over(reason: String) -> void:
 	if not day_active:
@@ -623,9 +649,10 @@ func _spawn_customer_hand() -> void:
 	var start_position := Vector2(randf_range(viewport_size.x * 0.4, viewport_size.x * 0.8), -80.0)
 	var patience_multiplier := (1.65 if rush_active else 1.0) + float(market_day - 1) * 0.015
 	var payout_multiplier := 1.5 if rush_active else 1.0
+	var customer_patience := MARKET_PROGRESSION.get_customer_patience(market_day)
 
 	var hand = CUSTOMER_HAND_SCRIPT.new() as Area2D
-	hand.call("configure", start_position, random_food, patience_multiplier, payout_multiplier)
+	hand.call("configure", start_position, random_food, patience_multiplier, payout_multiplier, customer_patience)
 	hand.connect("swatted", _on_customer_swatted)
 	hand.connect("finished", _on_buyer_transaction_finished)
 	customer_container.add_child(hand)
@@ -727,9 +754,23 @@ func _get_target_food_count() -> int:
 	return mini(BASE_FOOD_COUNT + int(floor(float(market_day - 1) / 6.0)), 8)
 
 func _apply_market_visuals() -> void:
-	if container_sprite != null:
-		var event_tint: Color = active_market_event.get("tint", Color.WHITE)
-		container_sprite.modulate = event_tint
+	var event_tint: Color = active_market_event.get("tint", Color.WHITE)
+	background_sprite = _show_named_sprite(self, str(active_market_event.get("background_node", "BackgroundVegetable")), event_tint)
+
+	if container_area != null:
+		container_sprite = _show_named_sprite(container_area, str(active_market_event.get("container_node", "ContainerVegetable")), event_tint)
+
+func _show_named_sprite(parent: Node, sprite_name: String, tint: Color) -> Sprite2D:
+	var selected_sprite: Sprite2D = null
+	for child in parent.get_children():
+		if child is Sprite2D:
+			var sprite := child as Sprite2D
+			var should_show := sprite.name == sprite_name
+			sprite.visible = should_show
+			if should_show:
+				sprite.modulate = tint
+				selected_sprite = sprite
+	return selected_sprite
 
 func _get_container_polygon_global() -> PackedVector2Array:
 	var points := PackedVector2Array()

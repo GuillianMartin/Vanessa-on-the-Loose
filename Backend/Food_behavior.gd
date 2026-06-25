@@ -164,6 +164,12 @@ func get_stock_cost() -> int:
 
 	return int(ceilf(config.market_price))
 
+func get_fresh_sell_value() -> int:
+	if config == null:
+		return 0
+
+	return int(ceilf(config.sell_price))
+
 func eat(amount: float) -> int:
 	if freshness <= 0.0:
 		return 0

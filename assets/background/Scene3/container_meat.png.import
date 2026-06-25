@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://86jbnival6l3"
-path="res://.godot/imported/temporary_background.png-5706aaf332a5e155307d98b69c04b53e.ctex"
+uid="uid://b10tiycf8khke"
+path="res://.godot/imported/container_meat.png-21f9454eb3fe0629698346a9c2ce24a2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background/Scene1/temporary_background.png"
-dest_files=["res://.godot/imported/temporary_background.png-5706aaf332a5e155307d98b69c04b53e.ctex"]
+source_file="res://assets/background/Scene3/container_meat.png"
+dest_files=["res://.godot/imported/container_meat.png-21f9454eb3fe0629698346a9c2ce24a2.ctex"]
 
 [params]
 

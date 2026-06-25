@@ -11,8 +11,8 @@ const HAND_SCALE := Vector2(1.5, 1.5)
 var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
 const DAMAGE_SHOW_TIME := 0.25 
 const SPEED := 280.0
-const MAX_PATIENCE := 100.0
-const PATIENCE_LOSS_FROM_SWAT := 50.0       
+const BASE_MAX_PATIENCE := 100.0
+const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.5
 const PATIENCE_LOSS_PER_FLY_SECOND := 8.0   
 const REACH_THRESHOLD := -2.0
 
@@ -22,7 +22,8 @@ var leaving := false
 var damage_timer := 2.0
 var leave_status := "" # Stores how they left
 
-var patience := MAX_PATIENCE                
+var max_patience := BASE_MAX_PATIENCE
+var patience := BASE_MAX_PATIENCE
 var target_food: Node2D = null
 var has_reached_target := false
 var flash_hurt_timer := 0.0
@@ -40,11 +41,13 @@ func _ready() -> void:
 	_ensure_nodes()
 	add_to_group("customers")
 
-func configure(start_position: Vector2, food_node: Node2D, new_patience_drain_multiplier: float = 1.0, new_payout_multiplier: float = 1.0) -> void:
+func configure(start_position: Vector2, food_node: Node2D, new_patience_drain_multiplier: float = 1.0, new_payout_multiplier: float = 1.0, new_max_patience: float = BASE_MAX_PATIENCE) -> void:
 	position = start_position
 	target_food = food_node
 	patience_drain_multiplier = new_patience_drain_multiplier
 	payout_multiplier = new_payout_multiplier
+	max_patience = maxf(new_max_patience, 1.0)
+	patience = max_patience
 	
 	if is_instance_valid(target_food):
 		target_position = target_food.global_position
@@ -72,6 +75,7 @@ func _get_hitbox_extents(node: Node2D) -> Vector2:
 
 func _process(delta: float) -> void:
 	if local_patience_bar:
+		local_patience_bar.max_value = max_patience
 		local_patience_bar.value = patience
 		var fill_sb = local_patience_bar.get_theme_stylebox("fill") as StyleBoxFlat
 		if fill_sb:
@@ -168,7 +172,7 @@ func _trigger_leave(status: String, payout: int) -> void:
 func _complete_transaction() -> void:
 	if is_instance_valid(target_food):
 		var product_value: int = target_food.call("get_current_value")
-		var satisfaction_modifier := patience / MAX_PATIENCE
+		var satisfaction_modifier := patience / max_patience
 		var final_payout := int(float(product_value) * satisfaction_modifier * payout_multiplier)
 
 		var food_container = target_food.get_parent()
@@ -206,7 +210,7 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 		swatted.emit(self)
 		sprite.texture = DAMAGE_TEXTURE
 		flash_hurt_timer = DAMAGE_SHOW_TIME
-		decrease_patience(PATIENCE_LOSS_FROM_SWAT)
+		decrease_patience(max_patience * PATIENCE_LOSS_FROM_SWAT_RATIO)
 
 func _ensure_nodes() -> void:
 	if sprite == null:
@@ -227,8 +231,8 @@ func _ensure_nodes() -> void:
 
 	if local_patience_bar == null:
 		local_patience_bar = ProgressBar.new()
-		local_patience_bar.max_value = MAX_PATIENCE
-		local_patience_bar.value = MAX_PATIENCE
+		local_patience_bar.max_value = max_patience
+		local_patience_bar.value = patience
 		local_patience_bar.show_percentage = false
 		local_patience_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		local_patience_bar.custom_minimum_size = Vector2(50, 6)
