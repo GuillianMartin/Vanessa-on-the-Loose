@@ -8,6 +8,7 @@ const CUSTOMER_HIT_COST := 20.0
 const BASE_DAMAGE := 1
 const BASE_ATTACK_COOLDOWN := 0.18
 const HIT_WINDOW := 0.14
+const DAILY_SWAT_COST_INCREASE := 0.3
 
 # Combo variables
 const COMBO_WINDOW := 1.2 # seconds allowed between hits to maintain combo
@@ -28,6 +29,7 @@ var combo_timer := 0.0
 var damage_level := 0
 var speed_level := 0
 var energy_level := 0
+var current_day := 1
 
 func _ready() -> void:
 	add_to_group("swatters")
@@ -51,8 +53,15 @@ func _process(delta: float) -> void:
 		energy = minf(energy + (regen_rate * combo_multiplier * delta), max_energy)
 		energy_changed.emit(energy, max_energy)
 
+func get_effective_swat_cost() -> float:
+	var day_penalty := float(max(current_day - 1, 0)) * DAILY_SWAT_COST_INCREASE
+	return maxf(swat_cost + day_penalty, 4.0)
+
+func set_day(day: int) -> void:
+	current_day = max(day, 1)
+
 func can_attack() -> bool:
-	return energy >= swat_cost and cooldown_timer <= 0.0
+	return energy >= get_effective_swat_cost() and cooldown_timer <= 0.0
 
 func reset() -> void:
 	energy = max_energy
@@ -77,7 +86,7 @@ func reset_upgrades() -> void:
 func swat() -> bool:
 	if not can_attack():
 		return false
-	energy -= swat_cost
+	energy -= get_effective_swat_cost()
 	cooldown_timer = attack_cooldown
 	hit_window_timer = HIT_WINDOW
 	energy_changed.emit(energy, max_energy)

@@ -383,6 +383,7 @@ func _start_day() -> void:
 	customer_spawn_timer = _get_next_customer_spawn_time()
 
 	swatter_entity.call("reset")
+	swatter_entity.call("set_day", market_day)
 	day_active = true
 	_set_swatter_active(true)
 	menu_layer.visible = false
