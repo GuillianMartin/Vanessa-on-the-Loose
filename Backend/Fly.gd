@@ -3,9 +3,10 @@ extends Area2D
 @onready var sfx_swat: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_swat") as AudioStreamPlayer2D
 
 signal died(fly: Area2D)
-signal spawn_requested(position: Vector2)
+signal spawn_requested(position: Vector2, behavior_name: String)
 
 const FLY_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/Fly_Attirbutes.gd")
+const FLY_EGG_SCRIPT := preload("res://Backend/FlyEgg.gd")
 
 const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
 
@@ -20,9 +21,8 @@ const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 44.0
 const BITE_DAMAGE := 6.0
 const BITE_INTERVAL := 0.65
+const EGG_FOOD_GROUP := "fly_eggs"
 const KNOCKBACK_TIME := 0.28
-const MOTHER_SPAWN_BITE_THRESHOLD := 4
-const MOTHER_SPAWN_CHANCE := 0.45
 const BLINK_MIN_TIME := 1.6
 const BLINK_MAX_TIME := 3.2
 
@@ -87,6 +87,8 @@ static func get_behavior_list(include_mother: bool = true, day: int = 1, event: 
 	var unlocked: Array[FlyBehavior] = []
 	for behavior in behaviors:
 		var is_spawner_type := behavior.name == "Mother" or behavior.name == "Queen"
+		if behavior.name == "Queen" and day % 10 != 0:
+			continue
 		if behavior.unlock_day <= day and (include_mother or not is_spawner_type):
 			unlocked.append(_scaled_behavior_for_day(behavior, day, event))
 
@@ -98,6 +100,24 @@ static func get_mother_behavior() -> FlyBehavior:
 			return behavior
 
 	return _get_fallback_behavior()
+
+static func get_behavior_by_name(behavior_name: String, day: int = 1, event: Dictionary = {}) -> FlyBehavior:
+	for behavior in _get_all_behaviors():
+		if behavior.name == behavior_name:
+			return _scaled_behavior_for_day(behavior, day, event)
+
+	return _scaled_behavior_for_day(_get_fallback_behavior(), day, event)
+
+static func get_hatch_options_for_parent(parent_name: String, day: int = 1) -> Array[String]:
+	if parent_name == "Mother":
+		return ["Swarm", "Normal"]
+
+	var options: Array[String] = []
+	for behavior in _get_all_behaviors():
+		if behavior.name == "Queen":
+			continue
+		options.append(behavior.name)
+	return options
 
 static func _get_all_behaviors() -> Array[FlyBehavior]:
 	var behaviors: Array[FlyBehavior] = []
@@ -352,6 +372,12 @@ func _move_to_food(delta: float) -> void:
 	velocity = velocity.lerp(Vector2.ZERO, 8.0 * delta)
 	_set_eating_sprite()
 	eating_time += delta
+	if behavior.can_spawn:
+		_try_lay_eggs_on_food()
+		if eating_time >= 0.35:
+			_leave_food()
+		return
+
 	bite_timer -= delta
 	if bite_timer <= 0.0:
 		bite_timer = BITE_INTERVAL
@@ -470,13 +496,36 @@ func _try_spawn_from_food() -> void:
 	if not behavior.can_spawn:
 		return
 
-	bites_since_spawn += 1
-	if bites_since_spawn < MOTHER_SPAWN_BITE_THRESHOLD:
+	spawn_requested.emit(global_position, "")
+
+func _try_lay_eggs_on_food() -> void:
+	if not _is_food_valid(target_food):
 		return
 
-	bites_since_spawn = 0
-	if randf() <= MOTHER_SPAWN_CHANCE:
-		spawn_requested.emit(global_position)
+	var max_eggs := 3 if behavior.name == "Queen" else 1
+	var current_eggs := _get_food_egg_count(target_food)
+	if current_eggs >= max_eggs:
+		return
+
+	var eggs_to_lay := max_eggs - current_eggs
+	var hatch_options := get_hatch_options_for_parent(behavior.name, behavior.unlock_day)
+	for _index in range(eggs_to_lay):
+		var egg := FLY_EGG_SCRIPT.new() as Area2D
+		egg.call("configure", behavior.max_health, hatch_options)
+		egg.add_to_group(EGG_FOOD_GROUP)
+		target_food.add_child(egg)
+		var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(10.0, 30.0)
+		egg.global_position = target_food.global_position + offset
+		var game_root := get_tree().current_scene
+		if game_root != null and game_root.has_method("_on_fly_spawn_requested"):
+			egg.connect("hatched", Callable(game_root, "_on_fly_spawn_requested"))
+
+func _get_food_egg_count(food: Node2D) -> int:
+	var count := 0
+	for child in food.get_children():
+		if child.is_in_group(EGG_FOOD_GROUP):
+			count += 1
+	return count
 
 func _process_blink(delta: float) -> void:
 	blink_timer -= delta

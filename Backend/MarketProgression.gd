@@ -1,6 +1,6 @@
 extends Node
 
-const DAY_DURATION_SECONDS := 30.0
+const DAY_DURATION_SECONDS := 45.0
 const STARTING_MONEY := 1000
 const STARTING_REPUTATION := 10
 const STARTING_SATISFACTION := 10
@@ -119,8 +119,8 @@ static func get_customer_spawn_bounds(day: int, event: Dictionary, rush_active: 
 	var rush_multiplier := 0.45 if rush_active else 1.0
 	return Vector2(1.2, 3.2) * day_speed * rush_multiplier / maxf(spawn_multiplier, 0.1)
 
-static func get_customer_patience(day: int) -> float:
-	return 100.0 + float(max(day - 1, 0)) * 4.0
+static func get_customer_patience(initial_fly_count: int) -> float:
+	return 100.0 * (1.0 + float(max(initial_fly_count, 0)) * 0.035)
 
 static func should_start_rush(day: int) -> bool:
 	var chance := minf(0.16 + float(day) * 0.006, 0.35)

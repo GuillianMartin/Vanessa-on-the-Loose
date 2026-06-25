@@ -98,7 +98,7 @@ var Flies := {
 			"eating": FlyAsset.new(load("res://assets/Flies/mother_fly/mother_fly_birth.png"), 3),
 			"attributes": create_fly_attributes(
 				"Mother",
-				4,
+				6,
 				95.0,
 				Vector2(0.58, 0.46),
 				Color(0.75, 1.0, 0.78),
@@ -119,7 +119,7 @@ var Flies := {
 			"eating": FlyAsset.new(load("res://assets/Flies/mother_fly/mother_fly_birth.png"), 3),
 			"attributes": create_fly_attributes(
 				"Queen",
-				9,
+				12,
 				82.0,
 				Vector2(0.66, 0.52),
 				Color(0.98, 0.76, 1.0),
@@ -130,7 +130,7 @@ var Flies := {
 				3.6,
 				true,
 				1.35,
-				5
+				10
 			)
 		},
 		{

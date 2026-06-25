@@ -37,6 +37,7 @@ var day_money_start := 0
 var day_money_earned := 0
 var day_stock_spent := 0
 var day_leftover_earned := 0
+var day_initial_flies := 0
 var day_flies_killed := 0
 var day_customers_served := 0
 var day_reputation_start := 0
@@ -374,6 +375,7 @@ func _start_day() -> void:
 	day_reputation_start = reputation
 	game_timer = MARKET_PROGRESSION.DAY_DURATION_SECONDS
 	flies_left = MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)
+	day_initial_flies = flies_left
 	rush_active = false
 	rush_timer = 0.0
 	rush_check_timer = randf_range(18.0, 45.0)
@@ -478,10 +480,12 @@ func _get_fly_bounds() -> Rect2:
 		Vector2(max(viewport_size.x - EDGE_PADDING * 2.0, 1.0), max(viewport_size.y - TOP_SAFE_AREA - EDGE_PADDING * 2.0, 1.0))
 	)
 
-func _spawn_fly(spawn_position: Vector2, bounds: Rect2, include_mother: bool, force_mother: bool = false) -> void:
+func _spawn_fly(spawn_position: Vector2, bounds: Rect2, include_mother: bool, force_mother: bool = false, forced_behavior_name: String = "") -> void:
 	var fly = FLY_SCENE.instantiate()
 	fly.position = Vector2(clampf(spawn_position.x, bounds.position.x, bounds.end.x), clampf(spawn_position.y, bounds.position.y, bounds.end.y))
 	var new_behavior = fly.get_forced_mother_behavior(market_day, active_market_event) if force_mother else fly.get_random_behavior(include_mother, market_day, active_market_event)
+	if not forced_behavior_name.is_empty():
+		new_behavior = fly.get_behavior_by_name(forced_behavior_name, market_day, active_market_event)
 	fly.configure(new_behavior, bounds)
 	fly.died.connect(_on_fly_died)
 	fly.spawn_requested.connect(_on_fly_spawn_requested)
@@ -578,12 +582,12 @@ func _on_fly_died(_fly: Area2D) -> void:
 		swatter_entity.call("register_fly_kill")
 	_update_hud()
 
-func _on_fly_spawn_requested(spawn_position: Vector2) -> void:
+func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = "") -> void:
 	if not day_active:
 		return
 	var bounds := _get_fly_bounds()
 	var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(70.0, 120.0)
-	_spawn_fly(spawn_position + offset, bounds, false)
+	_spawn_fly(spawn_position + offset, bounds, false, false, behavior_name)
 	flies_left += 1
 	_update_hud()
 
@@ -649,7 +653,7 @@ func _spawn_customer_hand() -> void:
 	var start_position := Vector2(randf_range(viewport_size.x * 0.4, viewport_size.x * 0.8), -80.0)
 	var patience_multiplier := (1.65 if rush_active else 1.0) + float(market_day - 1) * 0.015
 	var payout_multiplier := 1.5 if rush_active else 1.0
-	var customer_patience := MARKET_PROGRESSION.get_customer_patience(market_day)
+	var customer_patience := MARKET_PROGRESSION.get_customer_patience(day_initial_flies)
 
 	var hand = CUSTOMER_HAND_SCRIPT.new() as Area2D
 	hand.call("configure", start_position, random_food, patience_multiplier, payout_multiplier, customer_patience)
