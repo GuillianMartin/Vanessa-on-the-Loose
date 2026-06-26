@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dfsd3amms4e76"
-path="res://.godot/imported/default.png-5926b54ce6e686bf8a33132f162c47c2.ctex"
+uid="uid://c05a7a80luajw"
+path="res://.godot/imported/container_night.png-3c7b0dbe1d730ab46eed203699a498d6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/Vegetable/cabbage/default.png"
-dest_files=["res://.godot/imported/default.png-5926b54ce6e686bf8a33132f162c47c2.ctex"]
+source_file="res://assets/background/Scene4/container_night.png"
+dest_files=["res://.godot/imported/container_night.png-3c7b0dbe1d730ab46eed203699a498d6.ctex"]
 
 [params]
 
@@ -31,7 +31,7 @@ process/channel_remap/red=0
 process/channel_remap/green=1
 process/channel_remap/blue=2
 process/channel_remap/alpha=3
-process/fix_alpha_border=false
+process/fix_alpha_border=true
 process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
