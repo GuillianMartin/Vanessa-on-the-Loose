@@ -1,9 +1,9 @@
 extends Node
 
-const DAY_DURATION_SECONDS := 12.0
+const DAY_DURATION_SECONDS := 4.0
 const STARTING_MONEY := 1000
-const STARTING_REPUTATION := 10
-const STARTING_SATISFACTION := 10
+const STARTING_REPUTATION := 10000 # original 10
+const STARTING_SATISFACTION := 10000 # original 10
 
 static func get_market_event(day: int) -> Dictionary:
 	var events := [
@@ -70,10 +70,16 @@ static func get_market_event(day: int) -> Dictionary:
 		{
 			"name": "Rainy Market",
 			"food_category": "",
-			"background_path": "res://assets/background/Scene1/vegetable_background_day.png",
-			"container_path": "res://assets/background/Scene1/container.png",
-			"background_node": "BackgroundVegetable",
-			"container_node": "ContainerVegetable",
+			"background_path": "res://assets/background/Scene5/background_rainy.png",
+			"container_path": "res://assets/background/Scene5/container_rainy.png",
+			"background_node": "BackgroundRainy",
+			"container_node": "ContainerRainy",
+			"background_hframes": 9,
+			"background_vframes": 1,
+			"background_animation_duration": 0.12,
+			"container_hframes": 9,
+			"container_vframes": 1,
+			"container_animation_duration": 0.12,
 			"price_modifier": {},
 			"fly_weights": {"Normal": 2, "Mother": 2},
 			"fly_spawn_multiplier": 0.9,
