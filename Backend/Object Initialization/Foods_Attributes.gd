@@ -82,10 +82,10 @@ var Foods := {
 
 	"Fruit": [
 		{
-			"name": "Mango",
-			"default": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/default.png"), 1),
-			"notgood": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/notgood.png"), 1),
-			"critical": FoodAsset.new(load("res://assets/Foods/Vegetable/tomato/critical.png"), 5),
+			"name": "Banana",
+			"default": FoodAsset.new(load("res://assets/Foods/Fruits/banana/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/banana/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/banana/critical.png"), 5),
 			"attributes": create_food_attributes(
 				"Mango",
 				96.0 * FOOD_SIZE_MULT,
@@ -93,15 +93,14 @@ var Foods := {
 				0.72,
 				1,
 				48.0 * FOOD_SIZE_MULT,
-				18.0,
-				Color(1.0, 0.78, 0.24)
+				18.0
 			)
 		},
 		{
 			"name": "Calamansi",
-			"default": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/default.png"), 1),
-			"notgood": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/notgood.png"), 1),
-			"critical": FoodAsset.new(load("res://assets/Foods/Vegetable/cabbage/critical.png"), 5),
+			"default": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/critical.png"), 5),
 			"attributes": create_food_attributes(
 				"Calamansi",
 				82.0 * FOOD_SIZE_MULT,
@@ -109,8 +108,7 @@ var Foods := {
 				0.78,
 				1,
 				42.0 * FOOD_SIZE_MULT,
-				14.0,
-				Color(0.72, 1.0, 0.34)
+				14.0
 			)
 		},
 	],
@@ -144,6 +142,36 @@ var Foods := {
 				1,
 				48.0 * FOOD_SIZE_MULT,
 				31.0
+			)
+		},
+		{
+			"name": "Fish",
+			"default": FoodAsset.new(load("res://assets/Foods/Meat/fish/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/fish/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Meat/fish/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Pork",
+				96.0 * FOOD_SIZE_MULT,
+				90.0,
+				0.55 ,
+				1,
+				48.0 * FOOD_SIZE_MULT,
+				33.0
+			)
+		},
+		{
+			"name": "Sausage",
+			"default": FoodAsset.new(load("res://assets/Foods/Meat/sausage/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/sausage/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Meat/sausage/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Pork",
+				96.0 * FOOD_SIZE_MULT,
+				90.0,
+				0.55 ,
+				1,
+				48.0 * FOOD_SIZE_MULT,
+				41.0
 			)
 		},
 	],

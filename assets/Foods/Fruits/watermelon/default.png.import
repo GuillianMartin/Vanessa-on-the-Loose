@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://be5st2g18j0f4"
-path="res://.godot/imported/notgood.png-8f7307566bf52558032477ae58874cb3.ctex"
+uid="uid://bbmo4dg24ap7k"
+path="res://.godot/imported/default.png-f07567c71b60b76a2777184393a9e449.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Foods/fruit/banana/notgood.png"
-dest_files=["res://.godot/imported/notgood.png-8f7307566bf52558032477ae58874cb3.ctex"]
+source_file="res://assets/Foods/Fruits/watermelon/default.png"
+dest_files=["res://.godot/imported/default.png-f07567c71b60b76a2777184393a9e449.ctex"]
 
 [params]
 
