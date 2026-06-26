@@ -12,8 +12,8 @@ var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
 const DAMAGE_SHOW_TIME := 0.25 
 const SPEED := 280.0
 const BASE_MAX_PATIENCE := 100.0
-const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.5
-const PATIENCE_LOSS_PER_FLY_SECOND := 8.0   
+const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.0  # based original 0.5
+const PATIENCE_LOSS_PER_FLY_SECOND := 0.0    # based original 8.0
 const REACH_THRESHOLD := -2.0
 
 var target_position := FOOD_CARRY_OFFSET

@@ -6,7 +6,6 @@ const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods_Attribu
 const FOOD_SPAWN_TEXTURE := preload("res://assets/effects/food_spawn.png")
 const FOOD_SPOIL_TEXTURE := preload("res://assets/effects/food_spoil.png")
 
-const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
@@ -228,7 +227,11 @@ func _scale_sprite_to_size(target_size: float) -> void:
 		return
 
 	var texture_size := sprite.texture.get_size()
-	var longest_side: float = maxf(texture_size.x, texture_size.y)
+	var frame_size := texture_size
+	if sprite.hframes > 1 or sprite.vframes > 1:
+		frame_size = Vector2(texture_size.x / float(sprite.hframes), texture_size.y / float(sprite.vframes))
+
+	var longest_side: float = maxf(frame_size.x, frame_size.y)
 	if longest_side <= 0.0:
 		return
 
@@ -308,7 +311,11 @@ func _get_sprite_scale_for_size(target_size: float) -> Vector2:
 		return Vector2.ONE
 
 	var texture_size := sprite.texture.get_size()
-	var longest_side: float = maxf(texture_size.x, texture_size.y)
+	var frame_size := texture_size
+	if sprite.hframes > 1 or sprite.vframes > 1:
+		frame_size = Vector2(texture_size.x / float(sprite.hframes), texture_size.y / float(sprite.vframes))
+
+	var longest_side: float = maxf(frame_size.x, frame_size.y)
 	if longest_side <= 0.0:
 		return Vector2.ONE
 
@@ -320,7 +327,7 @@ func _ease_in_food() -> void:
 
 	var target_size := config.visual_size
 	if current_state == "critical":
-		target_size *= CRITICAL_SIZE_MULT
+		target_size *= 1
 
 	var target_scale := _get_sprite_scale_for_size(target_size)
 	sprite.scale = Vector2.ZERO
@@ -397,7 +404,7 @@ func _update_food_sprite(force: bool = false) -> void:
 	critical_frame_timer = 0.0
 	var target_size := config.visual_size
 	if current_state == "critical":
-		target_size *= CRITICAL_SIZE_MULT
+		target_size *= 1
 	_scale_sprite_to_size(target_size)
 
 func _animate_critical(delta: float) -> void:
