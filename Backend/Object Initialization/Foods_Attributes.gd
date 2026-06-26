@@ -150,7 +150,7 @@ var Foods := {
 			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/fish/notgood.png"), 1),
 			"critical": FoodAsset.new(load("res://assets/Foods/Meat/fish/critical.png"), 5),
 			"attributes": create_food_attributes(
-				"Pork",
+				"Fish",
 				96.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55 ,
@@ -165,7 +165,7 @@ var Foods := {
 			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/sausage/notgood.png"), 1),
 			"critical": FoodAsset.new(load("res://assets/Foods/Meat/sausage/critical.png"), 5),
 			"attributes": create_food_attributes(
-				"Pork",
+				"Sausage",
 				96.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55 ,

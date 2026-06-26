@@ -6,7 +6,6 @@ const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods_Attribu
 const FOOD_SPAWN_TEXTURE := preload("res://assets/effects/food_spawn.png")
 const FOOD_SPOIL_TEXTURE := preload("res://assets/effects/food_spoil.png")
 
-const CRITICAL_SIZE_MULT := 5
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
 
@@ -228,7 +227,9 @@ func _scale_sprite_to_size(target_size: float) -> void:
 		return
 
 	var texture_size := sprite.texture.get_size()
-	var longest_side: float = maxf(texture_size.x, texture_size.y)
+	var frame_width := texture_size.x / maxi(sprite.hframes, 1)
+	var frame_height := texture_size.y / maxi(sprite.vframes, 1)
+	var longest_side: float = maxf(frame_width, frame_height)
 	if longest_side <= 0.0:
 		return
 
@@ -308,7 +309,9 @@ func _get_sprite_scale_for_size(target_size: float) -> Vector2:
 		return Vector2.ONE
 
 	var texture_size := sprite.texture.get_size()
-	var longest_side: float = maxf(texture_size.x, texture_size.y)
+	var frame_width := texture_size.x / maxi(sprite.hframes, 1)
+	var frame_height := texture_size.y / maxi(sprite.vframes, 1)
+	var longest_side: float = maxf(frame_width, frame_height)
 	if longest_side <= 0.0:
 		return Vector2.ONE
 
@@ -318,11 +321,7 @@ func _ease_in_food() -> void:
 	if sprite == null:
 		return
 
-	var target_size := config.visual_size
-	if current_state == "critical":
-		target_size *= CRITICAL_SIZE_MULT
-
-	var target_scale := _get_sprite_scale_for_size(target_size)
+	var target_scale := _get_sprite_scale_for_size(config.visual_size)
 	sprite.scale = Vector2.ZERO
 	sprite.visible = true
 	if freshness_bar != null:
@@ -395,10 +394,7 @@ func _update_food_sprite(force: bool = false) -> void:
 	sprite.vframes = 1
 	sprite.frame = 0
 	critical_frame_timer = 0.0
-	var target_size := config.visual_size
-	if current_state == "critical":
-		target_size *= CRITICAL_SIZE_MULT
-	_scale_sprite_to_size(target_size)
+	_scale_sprite_to_size(config.visual_size)
 
 func _animate_critical(delta: float) -> void:
 	if current_state != "critical":
