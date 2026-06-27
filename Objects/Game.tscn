@@ -10,9 +10,9 @@
 [ext_resource type="Texture2D" uid="uid://dgtgb6gghtmo8" path="res://assets/background/Scene2/container_fruit.png" id="5_p8jku"]
 [ext_resource type="Texture2D" uid="uid://b84nptm35c2ba" path="res://assets/background/Scene3/background_meat.png" id="6_x45di"]
 [ext_resource type="Texture2D" uid="uid://b10tiycf8khke" path="res://assets/background/Scene3/container_meat.png" id="7_fvrtb"]
-[ext_resource type="Texture2D" uid="uid://c05a7a80luajw" path="res://assets/background/Scene4/container_night.png" id="10_j6kdu"]
 [ext_resource type="Texture2D" uid="uid://bnltq4l5glutb" path="res://assets/background/Scene5/background_rainy.png" id="8_rainy"]
 [ext_resource type="Texture2D" uid="uid://cb7ol2ccuxedw" path="res://assets/background/Scene5/container_rainy.png" id="9_rainy"]
+[ext_resource type="Texture2D" uid="uid://c05a7a80luajw" path="res://assets/background/Scene4/container_night.png" id="10_j6kdu"]
 
 [node name="Game" type="Node2D" unique_id=1851167090]
 script = ExtResource("1_qn0m5")
@@ -47,10 +47,12 @@ centered = false
 [node name="BackgroundNight" type="Sprite2D" parent="." unique_id=232422487]
 z_index = -100
 texture_filter = 1
-position = Vector2(-8, -8)
-scale = Vector2(1.0755063, 1.1798562)
+position = Vector2(576, 320)
+scale = Vector2(1.1, 1.206)
 texture = ExtResource("5_n7kpe")
+
 [node name="BackgroundRainy" type="Sprite2D" parent="." unique_id=1107671579]
+visible = false
 z_index = -100
 position = Vector2(-82.000015, -4)
 scale = Vector2(1.2, 1.2)
@@ -77,6 +79,7 @@ scale = Vector2(1.6348919, 1.3859234)
 texture = ExtResource("5_p8jku")
 
 [node name="ContainerRainy" type="Sprite2D" parent="Container" unique_id=1323731437]
+visible = false
 position = Vector2(-14.995722, 46.125874)
 scale = Vector2(1.585, 1.585)
 texture = ExtResource("9_rainy")
