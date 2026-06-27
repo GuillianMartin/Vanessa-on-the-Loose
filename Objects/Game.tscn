@@ -11,6 +11,8 @@
 [ext_resource type="Texture2D" uid="uid://b84nptm35c2ba" path="res://assets/background/Scene3/background_meat.png" id="6_x45di"]
 [ext_resource type="Texture2D" uid="uid://b10tiycf8khke" path="res://assets/background/Scene3/container_meat.png" id="7_fvrtb"]
 [ext_resource type="Texture2D" uid="uid://c05a7a80luajw" path="res://assets/background/Scene4/container_night.png" id="10_j6kdu"]
+[ext_resource type="Texture2D" uid="uid://bnltq4l5glutb" path="res://assets/background/Scene5/background_rainy.png" id="8_rainy"]
+[ext_resource type="Texture2D" uid="uid://cb7ol2ccuxedw" path="res://assets/background/Scene5/container_rainy.png" id="9_rainy"]
 
 [node name="Game" type="Node2D" unique_id=1851167090]
 script = ExtResource("1_qn0m5")
@@ -48,6 +50,11 @@ texture_filter = 1
 position = Vector2(-8, -8)
 scale = Vector2(1.0755063, 1.1798562)
 texture = ExtResource("5_n7kpe")
+[node name="BackgroundRainy" type="Sprite2D" parent="." unique_id=1107671579]
+z_index = -100
+position = Vector2(-82.000015, -4)
+scale = Vector2(1.2, 1.2)
+texture = ExtResource("8_rainy")
 centered = false
 
 [node name="Container" type="Area2D" parent="." unique_id=699358779]
@@ -69,6 +76,11 @@ position = Vector2(-13.496271, 50.195816)
 scale = Vector2(1.6348919, 1.3859234)
 texture = ExtResource("5_p8jku")
 
+[node name="ContainerRainy" type="Sprite2D" parent="Container" unique_id=1323731437]
+position = Vector2(-14.995722, 46.125874)
+scale = Vector2(1.585, 1.585)
+texture = ExtResource("9_rainy")
+
 [node name="ContainerMeat" type="Sprite2D" parent="Container" unique_id=1323731436]
 visible = false
 texture_filter = 1
@@ -84,7 +96,7 @@ texture = ExtResource("10_j6kdu")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Container" unique_id=690823877]
 position = Vector2(-1.4995708, 44.769226)
-polygon = PackedVector2Array(-691.3024, -233.34265, 698.8003, -230.62936, 781.27673, 67.83215, 839.7601, 336.4475, -863.7531, 336.4475, -806.7694, 134.30768)
+polygon = PackedVector2Array(-691.3024, -233.34265, 682.305, -222.4895, 727.2922, 77.328674, 758.78314, 343.23077, -778.2775, 326.95105, -749.7857, 138.37762)
 
 [node name="sfx_swat" type="AudioStreamPlayer2D" parent="." unique_id=1264548538]
 stream = ExtResource("3_qn0m5")

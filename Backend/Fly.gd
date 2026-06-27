@@ -85,38 +85,38 @@ class FlyBehavior:
 static func get_behavior_list(include_mother: bool = true, day: int = 1, event: Dictionary = {}) -> Array[FlyBehavior]:
 	var behaviors := _get_all_behaviors()
 	var unlocked: Array[FlyBehavior] = []
-	for behavior in behaviors:
-		var is_spawner_type := behavior.name == "Mother" or behavior.name == "Queen"
-		if behavior.name == "Queen" and day % 10 != 0:
+	for candidate in behaviors:
+		var is_spawner_type := candidate.name == "Mother" or candidate.name == "Queen"
+		if candidate.name == "Queen" and day % 10 != 0:
 			continue
-		if behavior.unlock_day <= day and (include_mother or not is_spawner_type):
-			unlocked.append(_scaled_behavior_for_day(behavior, day, event))
+		if candidate.unlock_day <= day and (include_mother or not is_spawner_type):
+			unlocked.append(_scaled_behavior_for_day(candidate, day, event))
 
 	return unlocked
 
 static func get_mother_behavior() -> FlyBehavior:
-	for behavior in _get_all_behaviors():
-		if behavior.name == "Mother":
-			return behavior
+	for candidate in _get_all_behaviors():
+		if candidate.name == "Mother":
+			return candidate
 
 	return _get_fallback_behavior()
 
 static func get_behavior_by_name(behavior_name: String, day: int = 1, event: Dictionary = {}) -> FlyBehavior:
-	for behavior in _get_all_behaviors():
-		if behavior.name == behavior_name:
-			return _scaled_behavior_for_day(behavior, day, event)
+	for candidate in _get_all_behaviors():
+		if candidate.name == behavior_name:
+			return _scaled_behavior_for_day(candidate, day, event)
 
 	return _scaled_behavior_for_day(_get_fallback_behavior(), day, event)
 
-static func get_hatch_options_for_parent(parent_name: String, day: int = 1) -> Array[String]:
+static func get_hatch_options_for_parent(parent_name: String, _day: int = 1) -> Array[String]:
 	if parent_name == "Mother":
 		return ["Swarm", "Normal"]
 
 	var options: Array[String] = []
-	for behavior in _get_all_behaviors():
-		if behavior.name == "Queen":
+	for candidate in _get_all_behaviors():
+		if candidate.name == "Queen":
 			continue
-		options.append(behavior.name)
+		options.append(candidate.name)
 	return options
 
 static func _get_all_behaviors() -> Array[FlyBehavior]:
@@ -157,27 +157,27 @@ static func _behavior_from_item(fly_item: Dictionary) -> FlyBehavior:
 		eating_frame_count
 	)
 
-static func _scaled_behavior_for_day(behavior: FlyBehavior, day: int, event: Dictionary) -> FlyBehavior:
+static func _scaled_behavior_for_day(base_behavior: FlyBehavior, day: int, event: Dictionary) -> FlyBehavior:
 	var health_multiplier := float(event.get("fly_health_multiplier", 1.0))
 	var speed_multiplier := float(event.get("fly_speed_multiplier", 1.0))
 	return FlyBehavior.new(
-		behavior.name,
-		int(ceilf(float(behavior.max_health) * health_multiplier + float(day) * 0.15)),
-		(behavior.speed + float(day) * 3.0) * speed_multiplier,
-		behavior.image_scale,
-		behavior.tint,
-		behavior.hitbox_radius,
-		behavior.health_bar_width,
-		behavior.health_bar_y,
-		behavior.knockback_strength,
-		maxf(behavior.eat_time_limit - float(day) * 0.01, 0.85),
-		behavior.can_spawn,
-		behavior.bite_damage_multiplier,
-		behavior.unlock_day,
-		behavior.flying_texture,
-		behavior.eating_texture,
-		behavior.flying_frame_count,
-		behavior.eating_frame_count
+		base_behavior.name,
+		int(ceilf(float(base_behavior.max_health) * health_multiplier + float(day) * 0.15)),
+		(base_behavior.speed + float(day) * 3.0) * speed_multiplier,
+		base_behavior.image_scale,
+		base_behavior.tint,
+		base_behavior.hitbox_radius,
+		base_behavior.health_bar_width,
+		base_behavior.health_bar_y,
+		base_behavior.knockback_strength,
+		maxf(base_behavior.eat_time_limit - float(day) * 0.01, 0.85),
+		base_behavior.can_spawn,
+		base_behavior.bite_damage_multiplier,
+		base_behavior.unlock_day,
+		base_behavior.flying_texture,
+		base_behavior.eating_texture,
+		base_behavior.flying_frame_count,
+		base_behavior.eating_frame_count
 	)
 
 static func _get_fallback_behavior() -> FlyBehavior:

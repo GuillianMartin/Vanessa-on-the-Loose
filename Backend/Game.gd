@@ -56,6 +56,12 @@ var container_area: Area2D
 var container_polygon: CollisionPolygon2D
 var container_sprite: Sprite2D
 var background_sprite: Sprite2D
+var background_animation_timer := 0.0
+var background_animation_duration := 0.0
+var background_frame_count := 1
+var container_animation_timer := 0.0
+var container_animation_duration := 0.0
+var container_frame_count := 1
 var hud_layer: CanvasLayer
 var menu_layer: CanvasLayer
 
@@ -99,6 +105,7 @@ func _process(delta: float) -> void:
 	_process_day_clock(delta)
 	_maintain_food_loop()
 	_maintain_fly_loop()
+	_update_background_animation(delta)
 
 func _input(event: InputEvent) -> void:
 	if not day_active:
@@ -761,9 +768,11 @@ func _get_target_food_count() -> int:
 func _apply_market_visuals() -> void:
 	var event_tint: Color = active_market_event.get("tint", Color.WHITE)
 	background_sprite = _show_named_sprite(self, str(active_market_event.get("background_node", "BackgroundVegetable")), event_tint)
+	_configure_event_sprite(background_sprite, "background")
 
 	if container_area != null:
 		container_sprite = _show_named_sprite(container_area, str(active_market_event.get("container_node", "ContainerVegetable")), event_tint)
+		_configure_event_sprite(container_sprite, "container")
 
 func _show_named_sprite(parent: Node, sprite_name: String, tint: Color) -> Sprite2D:
 	var selected_sprite: Sprite2D = null
@@ -776,6 +785,44 @@ func _show_named_sprite(parent: Node, sprite_name: String, tint: Color) -> Sprit
 				sprite.modulate = tint
 				selected_sprite = sprite
 	return selected_sprite
+
+func _configure_event_sprite(sprite: Sprite2D, sprite_type: String) -> void:
+	if sprite == null:
+		return
+
+	var texture_path := str(active_market_event.get("%s_path" % sprite_type, ""))
+	if texture_path != "":
+		var loaded_texture = load(texture_path)
+		if loaded_texture != null:
+			sprite.texture = loaded_texture
+
+	var hframes := int(active_market_event.get("%s_hframes" % sprite_type, 1))
+	var vframes := int(active_market_event.get("%s_vframes" % sprite_type, 1))
+	sprite.hframes = max(hframes, 1)
+	sprite.vframes = max(vframes, 1)
+	sprite.frame = int(active_market_event.get("%s_start_frame" % sprite_type, 0))
+
+	if sprite_type == "background":
+		background_frame_count = max(1, sprite.hframes * sprite.vframes)
+		background_animation_duration = float(active_market_event.get("background_animation_duration", 0.0))
+		background_animation_timer = 0.0
+	elif sprite_type == "container":
+		container_frame_count = max(1, sprite.hframes * sprite.vframes)
+		container_animation_duration = float(active_market_event.get("container_animation_duration", 0.0))
+		container_animation_timer = 0.0
+
+func _update_background_animation(delta: float) -> void:
+	if background_sprite != null and background_sprite.visible and background_sprite.hframes > 1 and background_animation_duration > 0.0:
+		background_animation_timer += delta
+		while background_animation_timer >= background_animation_duration:
+			background_animation_timer -= background_animation_duration
+			background_sprite.frame = (background_sprite.frame + 1) % background_frame_count
+
+	if container_sprite != null and container_sprite.visible and container_sprite.hframes > 1 and container_animation_duration > 0.0:
+		container_animation_timer += delta
+		while container_animation_timer >= container_animation_duration:
+			container_animation_timer -= container_animation_duration
+			container_sprite.frame = (container_sprite.frame + 1) % container_frame_count
 
 func _get_container_polygon_global() -> PackedVector2Array:
 	var points := PackedVector2Array()
