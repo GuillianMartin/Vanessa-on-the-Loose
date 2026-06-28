@@ -16,6 +16,9 @@ const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.0  # based original 0.5
 const PATIENCE_LOSS_PER_FLY_SECOND := 0.0    # based original 8.0
 const REACH_THRESHOLD := -2.0
 
+const CUSTOMER_HAND_ASSET_SCRIPT := preload("res://Backend/Object Initialization/CustomerHand_Attributes.gd")
+var customer_hand_assets: Dictionary = {}
+
 var target_position := FOOD_CARRY_OFFSET
 var velocity := Vector2.ZERO
 var leaving := false
@@ -30,6 +33,10 @@ var flash_hurt_timer := 0.0
 var patience_drain_multiplier := 1.0
 var payout_multiplier := 1.0
 
+var customer_asset: Object = null
+var hand_scale := HAND_SCALE
+var sfx_player: AudioStreamPlayer2D
+
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
 var local_patience_bar: ProgressBar 
@@ -38,6 +45,15 @@ func _ready() -> void:
 	input_pickable = true
 	monitoring = true
 	monitorable = true
+	if customer_hand_assets.is_empty():
+		var asset_holder = CUSTOMER_HAND_ASSET_SCRIPT.new()
+		if asset_holder:
+			var loaded_assets = asset_holder.get("Customers")
+			if typeof(loaded_assets) == TYPE_DICTIONARY:
+				customer_hand_assets = loaded_assets
+		if customer_hand_assets.is_empty():
+			customer_hand_assets = {}
+	_pick_random_customer_asset()
 	_ensure_nodes()
 	add_to_group("customers")
 
@@ -61,6 +77,7 @@ func configure(start_position: Vector2, food_node: Node2D, new_patience_drain_mu
 
 	if is_node_ready():
 		_ensure_nodes()
+		
 
 func _get_hitbox_extents(node: Node2D) -> Vector2:
 	var food_cs := node.get_node_or_null("CollisionShape2D")
@@ -72,6 +89,18 @@ func _get_hitbox_extents(node: Node2D) -> Vector2:
 			var temp = food_cs.shape.radius / 3.0
 			return Vector2(temp, temp)
 	return Vector2.ZERO
+
+func _pick_random_customer_asset() -> void:
+	if customer_asset != null:
+		return
+
+	var keys: Array = customer_hand_assets.keys()
+	if keys.is_empty():
+		return
+
+	customer_asset = customer_hand_assets[keys[randi() % keys.size()]]
+	if customer_asset and customer_asset.scale != Vector2.ZERO:
+		hand_scale = customer_asset.scale
 
 func _process(delta: float) -> void:
 	if local_patience_bar:
@@ -89,7 +118,7 @@ func _process(delta: float) -> void:
 	if flash_hurt_timer > 0.0:
 		flash_hurt_timer -= delta
 		if flash_hurt_timer <= 0.0 and not leaving:
-			sprite.texture = DEFAULT_TEXTURE
+			sprite.texture = customer_asset.default_texture if customer_asset and customer_asset.default_texture else DEFAULT_TEXTURE
 
 	if not leaving:
 		_process_fly_contamination(delta)
@@ -160,11 +189,11 @@ func _trigger_leave(status: String, payout: int) -> void:
 	leave_status = status
 	damage_timer = DAMAGE_SHOW_TIME * 2.5
 	if status == "disgusted":
-		sprite.texture = DAMAGE_TEXTURE
+		sprite.texture = customer_asset.damage_texture if customer_asset and customer_asset.damage_texture else DAMAGE_TEXTURE
 	elif status == "success":
-		sprite.texture = HAND_CLOSED_TEXTURE
+		sprite.texture = customer_asset.closed_texture if customer_asset and customer_asset.closed_texture else HAND_CLOSED_TEXTURE
 	else:
-		sprite.texture = DEFAULT_TEXTURE
+		sprite.texture = customer_asset.default_texture if customer_asset and customer_asset.default_texture else DEFAULT_TEXTURE
 	
 	# Emit completion stats immediately so Game.gd updates right away
 	finished.emit(self, status, payout)
@@ -190,7 +219,7 @@ func _complete_transaction() -> void:
 				target_food.get_node("Label").visible = false
 
 		# Show the closed hand texture while carrying the food
-		sprite.texture = HAND_CLOSED_TEXTURE
+		sprite.texture = customer_asset.closed_texture if customer_asset and customer_asset.closed_texture else HAND_CLOSED_TEXTURE
 		_trigger_leave("success", final_payout)
 	else:
 		_trigger_leave("depleted", 0)
@@ -208,26 +237,40 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 			return
 
 		swatted.emit(self)
-		sprite.texture = DAMAGE_TEXTURE
+		sprite.texture = customer_asset.damage_texture if customer_asset and customer_asset.damage_texture else DAMAGE_TEXTURE
+		if sfx_player and sfx_player.stream:
+			sfx_player.play()
 		flash_hurt_timer = DAMAGE_SHOW_TIME
 		decrease_patience(max_patience * PATIENCE_LOSS_FROM_SWAT_RATIO)
 
 func _ensure_nodes() -> void:
+	_pick_random_customer_asset()
+
 	if sprite == null:
 		sprite = Sprite2D.new()
-		sprite.texture = DEFAULT_TEXTURE
-		sprite.scale = HAND_SCALE
+		if customer_asset and customer_asset.default_texture:
+			sprite.texture = customer_asset.default_texture
+		else:
+			sprite.texture = DEFAULT_TEXTURE
+		sprite.scale = hand_scale
 		add_child(sprite)
 
 	if collision_shape == null:
 		collision_shape = CollisionShape2D.new()
 		var rect := RectangleShape2D.new()
 		# Size the rectangle from the hand texture, applying the hand scale
-		var tex_size := DEFAULT_TEXTURE.get_size()
-		var scaled_size := tex_size * HAND_SCALE
+		var texture_source: Texture2D = customer_asset.default_texture if customer_asset and customer_asset.default_texture else DEFAULT_TEXTURE
+		var tex_size: Vector2 = texture_source.get_size()
+		var scaled_size: Vector2 = tex_size * hand_scale
 		rect.extents = scaled_size / 2.0
 		collision_shape.shape = rect
 		add_child(collision_shape)
+
+	if sfx_player == null:
+		sfx_player = AudioStreamPlayer2D.new()
+		if customer_asset and customer_asset.hit_sfx_path != "":
+			sfx_player.stream = load(customer_asset.hit_sfx_path)
+		add_child(sfx_player)
 
 	if local_patience_bar == null:
 		local_patience_bar = ProgressBar.new()

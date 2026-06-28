@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dwb6kidjxrp7o"
+path="res://.godot/imported/ouch3.mp3-8fdee6fd45290b4966354199c7dcf3cd.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/customer_sound/ouch3.mp3"
+dest_files=["res://.godot/imported/ouch3.mp3-8fdee6fd45290b4966354199c7dcf3cd.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

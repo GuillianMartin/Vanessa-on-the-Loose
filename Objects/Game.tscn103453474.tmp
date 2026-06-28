@@ -1,0 +1,105 @@
+[gd_scene format=3 uid="uid://dmqryojkyoclc"]
+
+[ext_resource type="Script" uid="uid://dgpscocihbfeo" path="res://Backend/Game.gd" id="1_qn0m5"]
+[ext_resource type="Texture2D" uid="uid://bxg2q277syp7s" path="res://assets/background/Scene1/vegetable_background_day.png" id="3_0r3yc"]
+[ext_resource type="Script" uid="uid://d3t4vdpevsgtp" path="res://Backend/container.gd" id="3_cf3yn"]
+[ext_resource type="Texture2D" uid="uid://d3c087oqk2oc1" path="res://assets/background/Scene1/container.png" id="3_hby63"]
+[ext_resource type="AudioStream" uid="uid://d14x4vas85qj8" path="res://assets/Sound Effects/Slap.mp3" id="3_qn0m5"]
+[ext_resource type="Texture2D" uid="uid://ca0fuutgxoj7h" path="res://assets/background/Scene2/background_fruit.png" id="4_dwilc"]
+[ext_resource type="Texture2D" uid="uid://b0wd30tw7dw8e" path="res://assets/background/Scene4/background_night.png" id="5_n7kpe"]
+[ext_resource type="Texture2D" uid="uid://dgtgb6gghtmo8" path="res://assets/background/Scene2/container_fruit.png" id="5_p8jku"]
+[ext_resource type="Texture2D" uid="uid://b84nptm35c2ba" path="res://assets/background/Scene3/background_meat.png" id="6_x45di"]
+[ext_resource type="Texture2D" uid="uid://b10tiycf8khke" path="res://assets/background/Scene3/container_meat.png" id="7_fvrtb"]
+[ext_resource type="Texture2D" uid="uid://bnltq4l5glutb" path="res://assets/background/Scene5/background_rainy.png" id="8_rainy"]
+[ext_resource type="Texture2D" uid="uid://cb7ol2ccuxedw" path="res://assets/background/Scene5/container_rainy.png" id="9_rainy"]
+[ext_resource type="Texture2D" uid="uid://c05a7a80luajw" path="res://assets/background/Scene4/container_night.png" id="10_j6kdu"]
+
+[node name="Game" type="Node2D" unique_id=1851167090]
+script = ExtResource("1_qn0m5")
+
+[node name="BackgroundVegetable" type="Sprite2D" parent="." unique_id=862864444]
+visible = false
+z_index = -100
+texture_filter = 1
+position = Vector2(-8, -8)
+scale = Vector2(1.0755063, 1.1798562)
+texture = ExtResource("3_0r3yc")
+centered = false
+
+[node name="BackgroundFruit" type="Sprite2D" parent="." unique_id=1507823928]
+visible = false
+z_index = -100
+texture_filter = 1
+position = Vector2(-8, -8)
+scale = Vector2(1.0828729, 1.2086332)
+texture = ExtResource("4_dwilc")
+centered = false
+
+[node name="BackgroundMeat" type="Sprite2D" parent="." unique_id=1107671578]
+visible = false
+z_index = -100
+texture_filter = 1
+position = Vector2(-16, -8)
+scale = Vector2(1.0902394, 1.1942446)
+texture = ExtResource("6_x45di")
+centered = false
+
+[node name="BackgroundNight" type="Sprite2D" parent="." unique_id=232422487]
+z_index = -100
+texture_filter = 1
+position = Vector2(576, 320)
+scale = Vector2(1.1, 1.206)
+texture = ExtResource("5_n7kpe")
+
+[node name="BackgroundRainy" type="Sprite2D" parent="." unique_id=1107671579]
+visible = false
+z_index = -100
+position = Vector2(-82.000015, -4)
+scale = Vector2(1.2, 1.2)
+texture = ExtResource("8_rainy")
+centered = false
+
+[node name="Container" type="Area2D" parent="." unique_id=699358779]
+position = Vector2(585, 327)
+scale = Vector2(0.6668572, 0.7371134)
+script = ExtResource("3_cf3yn")
+
+[node name="ContainerVegetable" type="Sprite2D" parent="Container" unique_id=1440347322]
+visible = false
+texture_filter = 1
+position = Vector2(-19.494345, 92.9624)
+scale = Vector2(2.5192807, 3.1788492)
+texture = ExtResource("3_hby63")
+
+[node name="ContainerFruit" type="Sprite2D" parent="Container" unique_id=283867457]
+visible = false
+texture_filter = 1
+position = Vector2(-13.496271, 50.195816)
+scale = Vector2(1.6348919, 1.3859234)
+texture = ExtResource("5_p8jku")
+
+[node name="ContainerRainy" type="Sprite2D" parent="Container" unique_id=1323731437]
+visible = false
+position = Vector2(-14.995722, 46.125874)
+scale = Vector2(1.585, 1.585)
+texture = ExtResource("9_rainy")
+
+[node name="ContainerMeat" type="Sprite2D" parent="Container" unique_id=1323731436]
+visible = false
+texture_filter = 1
+position = Vector2(-7.4977045, 52.909126)
+scale = Vector2(1.6238455, 1.3956833)
+texture = ExtResource("7_fvrtb")
+
+[node name="ContainerNight" type="Sprite2D" parent="Container" unique_id=1070993606]
+texture_filter = 1
+position = Vector2(-9.74723, -2.7132864)
+scale = Vector2(1.6169411, 1.6299239)
+texture = ExtResource("10_j6kdu")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Container" unique_id=690823877]
+position = Vector2(-1.4995708, 44.769226)
+polygon = PackedVector2Array(-691.3024, -233.34265, 682.305, -222.4895, 727.2922, 77.328674, 758.78314, 343.23077, -778.2775, 326.95105, -749.7857, 138.37762)
+
+[node name="sfx_swat" type="AudioStreamPlayer2D" parent="." unique_id=1264548538]
+stream = ExtResource("3_qn0m5")

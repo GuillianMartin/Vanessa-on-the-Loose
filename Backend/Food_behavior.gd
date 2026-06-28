@@ -286,9 +286,8 @@ func _update_visuals() -> void:
 	if sprite == null or freshness_bar == null:
 		return
 
-	var ratio := 0.0
 	if max_freshness > 0.0:
-		ratio = clampf(freshness / max_freshness, 0.0, 1.0)
+		var ratio := clampf(freshness / max_freshness, 0.0, 1.0)
 
 	_update_food_sprite()
 	sprite.modulate = config.tint
