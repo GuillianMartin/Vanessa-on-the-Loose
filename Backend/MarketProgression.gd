@@ -1,6 +1,6 @@
 extends Node
 
-const DAY_DURATION_SECONDS := 45.0
+const DAY_DURATION_SECONDS := 60.0
 const STARTING_MONEY := 1000
 const STARTING_REPUTATION := 10000 # original 10
 const STARTING_SATISFACTION := 10000 # original 10
