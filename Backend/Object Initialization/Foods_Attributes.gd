@@ -13,10 +13,10 @@ const FOOD_SIZE_MULT := 2.5
 func create_food_attributes(
 	food_name: String,
 	food_visual_size: float,
+	food_radius: float,
 	food_max_freshness: float,
 	food_spoil_rate: float,
 	food_nutrition: int,
-	food_radius: float,
 	food_base_price: float,
 	food_tint: Color = Color.WHITE
 ) -> Dictionary:
@@ -41,10 +41,10 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Carrot",
 				100.0 * FOOD_SIZE_MULT,
+				50.0 * FOOD_SIZE_MULT,
 				95.0,
 				0.6,
 				1,
-				50.0 * FOOD_SIZE_MULT,
 				13.0
 			)
 		},
@@ -56,10 +56,10 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Cabbage",
 				100.0 * FOOD_SIZE_MULT,
+				50.0 * FOOD_SIZE_MULT,
 				105.0,
 				0.5,
 				1,
-				50.0 * FOOD_SIZE_MULT,
 				16.0
 			)
 		},
@@ -71,10 +71,10 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Tomato",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55,
 				1,
-				48.0 * FOOD_SIZE_MULT,
 				11.0
 			)
 		},
@@ -89,25 +89,25 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Mango",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				88.0,
 				0.72,
 				1,
-				48.0 * FOOD_SIZE_MULT,
-				18.0
+				12.0
 			)
 		},
 		{
-			"name": "Calamansi",
+			"name": "watermelon",
 			"default": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/default.png"), 1),
 			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/notgood.png"), 1),
 			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/watermelon/critical.png"), 5),
 			"attributes": create_food_attributes(
-				"Calamansi",
+				"watermelon",
 				82.0 * FOOD_SIZE_MULT,
+				42.0 * FOOD_SIZE_MULT,
 				82.0,
 				0.78,
 				1,
-				42.0 * FOOD_SIZE_MULT,
 				14.0
 			)
 		},
@@ -122,11 +122,11 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Pork",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55 ,
 				1,
-				48.0 * FOOD_SIZE_MULT,
-				36.0
+				26.0
 			)
 		},
 		{
@@ -137,11 +137,11 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Chicken",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55,
 				1,
-				48.0 * FOOD_SIZE_MULT,
-				31.0
+				23.0
 			)
 		},
 		{
@@ -152,11 +152,11 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Fish",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55 ,
 				1,
-				48.0 * FOOD_SIZE_MULT,
-				33.0
+				19.0
 			)
 		},
 		{
@@ -167,11 +167,11 @@ var Foods := {
 			"attributes": create_food_attributes(
 				"Sausage",
 				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
 				90.0,
 				0.55 ,
 				1,
-				48.0 * FOOD_SIZE_MULT,
-				41.0
+				17.0
 			)
 		},
 	],
