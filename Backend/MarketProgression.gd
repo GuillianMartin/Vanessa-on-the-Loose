@@ -1,10 +1,13 @@
 extends Node
+# MARKET PROGRESSION
+# Serves as game event attribute changer for loop progression
 
 const DAY_DURATION_SECONDS := 60.0
-const STARTING_MONEY := 1000
-const STARTING_REPUTATION := 10000 # original 10
-const STARTING_SATISFACTION := 10000 # original 10
+const STARTING_MONEY := 500
+const STARTING_REPUTATION := 10
+const STARTING_SATISFACTION := 10
 
+# Function that serve as event picker
 static func get_market_event(day: int) -> Dictionary:
 	var events := [
 		{
@@ -15,12 +18,12 @@ static func get_market_event(day: int) -> Dictionary:
 			"background_node": "BackgroundVegetable",
 			"container_node": "ContainerVegetable",
 			"price_modifier": {"Vegetable": 1.10},
-			"fly_weights": {"Swarm": 3},
-			"fly_spawn_multiplier": 1.12,
-			"customer_spawn_multiplier": 1.0,
-			"customer_reward_multiplier": 2,
-			"spoil_modifier": 1.0,
-			"tint": Color(0.94, 1.0, 0.88),
+			"fly_weights": {"Normal": 2, "Swarm": 3},
+			"fly_spawn_multiplier": 1.06,
+			"customer_spawn_multiplier": 1.12,
+			"customer_reward_multiplier": 2.0,
+			"spoil_modifier": 1.02,
+			"tint": Color(1.0, 1.0, 1.0),
 		},
 		{
 			"name": "Filipino Meat Market",
@@ -29,13 +32,13 @@ static func get_market_event(day: int) -> Dictionary:
 			"container_path": "res://assets/background/Scene3/container_meat.png",
 			"background_node": "BackgroundMeat",
 			"container_node": "ContainerMeat",
-			"price_modifier": {"Meat": 1.10},
-			"fly_weights": {"Queen": 3, "Tank": 2},
-			"fly_spawn_multiplier": 1.0,
-			"customer_spawn_multiplier": 0.95,
+			"price_modifier": {"Meat": 1.12},
+			"fly_weights": {"Normal": 2, "Tank": 2, "Mother": 3},
+			"fly_spawn_multiplier": 1.08,
+			"customer_spawn_multiplier": 1.16,
 			"customer_reward_multiplier": 2.0,
-			"spoil_modifier": 1.08,
-			"tint": Color(1.0, 0.90, 0.86),
+			"spoil_modifier": 1.06,
+			"tint": Color(1.0, 1.0, 1.0),
 		},
 		{
 			"name": "Filipino Fruit Market",
@@ -44,13 +47,13 @@ static func get_market_event(day: int) -> Dictionary:
 			"container_path": "res://assets/background/Scene2/container_fruit.png",
 			"background_node": "BackgroundFruit",
 			"container_node": "ContainerFruit",
-			"price_modifier": {"Fruit": 1.10, "Vegetable": 1.05},
-			"fly_weights": {"Tank": 3},
-			"fly_spawn_multiplier": 1.06,
-			"customer_spawn_multiplier": 1.05,
+			"price_modifier": {"Fruit": 1.10},
+			"fly_weights": {"Normal": 3, "Swarm": 2, "Mother": 3},
+			"fly_spawn_multiplier": 1.08,
+			"customer_spawn_multiplier": 1.16,
 			"customer_reward_multiplier": 2.0,
-			"spoil_modifier": 1.0,
-			"tint": Color(1.0, 0.95, 0.82),
+			"spoil_modifier": 1.04,
+			"tint": Color(1.0, 1.0, 1.0),
 		},
 		{
 			"name": "Night Market",
@@ -60,12 +63,12 @@ static func get_market_event(day: int) -> Dictionary:
 			"background_node": "BackgroundNight",
 			"container_node": "ContainerNight",
 			"price_modifier": {},
-			"fly_weights": {"Poison": 2, "Fire": 2, "Invisible": 2, "Blink": 2},
-			"fly_spawn_multiplier": 1.2,
-			"customer_spawn_multiplier": 1.3,
+			"fly_weights": {"Normal": 2, "Invisible": 2, "Blink": 2, "Mother": 3},
+			"fly_spawn_multiplier": 1.10,
+			"customer_spawn_multiplier": 1.20,
 			"customer_reward_multiplier": 2.2,
 			"spoil_modifier": 1.0,
-			"tint": Color(0.78, 0.82, 1.0),
+			"tint": Color(1.0, 1.0, 1.0),
 		},
 		{
 			"name": "Rainy Market",
@@ -81,19 +84,20 @@ static func get_market_event(day: int) -> Dictionary:
 			"container_vframes": 1,
 			"container_animation_duration": 0.12,
 			"price_modifier": {},
-			"fly_weights": {"Normal": 2, "Mother": 2},
-			"fly_spawn_multiplier": 0.9,
-			"fly_speed_multiplier": 0.82,
-			"customer_spawn_multiplier": 0.75,
+			"fly_weights": {"Normal": 2, "Poison": 2, "Swarm": 3, "Mother": 3},
+			"fly_spawn_multiplier": 1.12,
+			"fly_speed_multiplier": 1.02,
+			"customer_spawn_multiplier": 1.24,
 			"customer_reward_multiplier": 2.2,
 			"spoil_modifier": 1.3,
-			"tint": Color(0.82, 0.92, 1.0),
+			"tint": Color(1.0, 1.0, 1.0),
 		},
 	]
 
-	var event_index := int((day - 1) / 5) % events.size()
-	return events[event_index]
+	var event_index := int((day - 1) / 5.0) % events.size()
+	return events[event_index] # Takes the event based on index value
 
+#Helper Functions
 static func get_difficulty_level(day: int) -> int:
 	return max(day, 1)
 
