@@ -2,17 +2,17 @@ extends Node
 
 signal energy_changed(energy: float, max_energy: float)
 
-const MAX_ENERGY := 100.0 # based original 1000
-const SWAT_COST := 1.0 # based original 8.0
+const MAX_ENERGY := 100.0
+const SWAT_COST := 3.0
 const CUSTOMER_HIT_COST := 20.0
-const BASE_DAMAGE := 100 # based original 1
+const BASE_DAMAGE := 1
 const BASE_ATTACK_COOLDOWN := 0.18
 const HIT_WINDOW := 0.14
 const DAILY_SWAT_COST_INCREASE := 0.3 
 
 # Combo variables
 const COMBO_WINDOW := 1.2 # seconds allowed between hits to maintain combo
-const BASE_REGEN_RATE := 12.0 # units per second # based original 12.0
+const BASE_REGEN_RATE := 12.0
 const MAX_COMBO := 5
 
 var max_energy := MAX_ENERGY

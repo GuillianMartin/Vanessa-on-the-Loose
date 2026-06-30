@@ -2,7 +2,7 @@ extends Node
 # MARKET PROGRESSION
 # Serves as game event attribute changer for loop progression
 
-const DAY_DURATION_SECONDS := 60.0
+const DAY_DURATION_SECONDS := 60
 const STARTING_MONEY := 500
 const STARTING_REPUTATION := 10
 const STARTING_SATISFACTION := 10

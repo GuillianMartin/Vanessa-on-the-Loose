@@ -204,6 +204,13 @@ func _complete_transaction() -> void:
 		var satisfaction_modifier := patience / max_patience
 		var final_payout := int(float(product_value) * satisfaction_modifier * payout_multiplier)
 
+		# Check if food has eggs on it
+		var has_egg := false
+		for child in target_food.get_children():
+			if child.is_in_group("fly_eggs"):
+				has_egg = true
+				break
+
 		var food_container = target_food.get_parent()
 		if food_container:
 			food_container.remove_child(target_food)
@@ -217,6 +224,14 @@ func _complete_transaction() -> void:
 				target_food.get_node("ProgressBar").visible = false
 			if target_food.get_node_or_null("Label"):
 				target_food.get_node("Label").visible = false
+
+		# Apply penalties if food has egg
+		if has_egg:
+			var game_root = get_tree().current_scene
+			if game_root and game_root.has_method("_adjust_reputation") and game_root.has_method("_adjust_satisfaction"):
+				game_root.call("_adjust_reputation", -4)
+				game_root.call("_adjust_satisfaction", -2)
+				_show_egg_penalty_text(game_root.position)
 
 		# Show the closed hand texture while carrying the food
 		sprite.texture = customer_asset.closed_texture if customer_asset and customer_asset.closed_texture else HAND_CLOSED_TEXTURE
@@ -285,6 +300,38 @@ func _ensure_nodes() -> void:
 		sb.bg_color = Color(0.2, 0.8, 0.2)
 		local_patience_bar.add_theme_stylebox_override("fill", sb)
 		add_child(local_patience_bar)
+
+func _show_egg_penalty_text(scene_position: Vector2) -> void:
+	# Reputation penalty text (red)
+	var rep_label = Label.new()
+	rep_label.text = "-4"
+	rep_label.add_theme_color_override("font_color", Color.RED)
+	rep_label.add_theme_font_size_override("font_size", 24)
+	rep_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rep_label.z_index = 100
+	rep_label.position = global_position + Vector2(-30, -40)
+	get_parent().add_child(rep_label)
+	
+	# Satisfaction penalty text (yellow)
+	var sat_label = Label.new()
+	sat_label.text = "-2"
+	sat_label.add_theme_color_override("font_color", Color.YELLOW)
+	sat_label.add_theme_font_size_override("font_size", 24)
+	sat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sat_label.z_index = 100
+	sat_label.position = global_position + Vector2(30, -40)
+	get_parent().add_child(sat_label)
+	
+	# Animate both texts upward with fade out
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(rep_label, "position", rep_label.position + Vector2(0, -50), 1.5)
+	tween.tween_property(rep_label, "modulate:a", 0.0, 1.5)
+	tween.tween_property(sat_label, "position", sat_label.position + Vector2(0, -50), 1.5)
+	tween.tween_property(sat_label, "modulate:a", 0.0, 1.5)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func(): rep_label.queue_free(); sat_label.queue_free())
 
 func _get_swatter() -> Node:
 	var swatters := get_tree().get_nodes_in_group("swatters")

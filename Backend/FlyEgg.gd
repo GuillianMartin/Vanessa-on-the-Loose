@@ -16,18 +16,22 @@ var hatch_options: Array[String] = []
 var hatch_timer := 0.0
 var frame_timer := 0.0
 var hatching := false
+var food_parent: Node2D = null
+var egg_damage_per_second := 1.5
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
 var health_bar: ProgressBar
+var damage_label: Label
 
-func configure(new_health: int, new_hatch_options: Array[String]) -> void:
+func configure(new_health: int, new_hatch_options: Array[String], parent_food: Node2D = null) -> void:
 	max_health = maxi(new_health, 1)
 	health = max_health
 	hatch_options.clear()
 	for option in new_hatch_options:
 		hatch_options.append(option)
 	hatch_timer = randf_range(3.0, 5.0)
+	food_parent = parent_food
 
 func _ready() -> void:
 	input_pickable = true
@@ -42,6 +46,9 @@ func _process(delta: float) -> void:
 	if hatching:
 		_update_hatch(delta)
 		return
+
+	if food_parent != null and is_instance_valid(food_parent) and food_parent.has_method("eat"):
+		food_parent.call("eat", egg_damage_per_second * delta)
 
 	hatch_timer -= delta
 	_animate_idle(delta)
@@ -93,6 +100,14 @@ func _ensure_nodes() -> void:
 		health_bar.position = Vector2(-22, -32)
 		add_child(health_bar)
 	_update_health_bar()
+
+	if damage_label == null:
+		damage_label = Label.new()
+		damage_label.text = "-%.1f" % egg_damage_per_second
+		damage_label.add_theme_color_override("font_color", Color.RED)
+		damage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		damage_label.position = Vector2(-20, -48)
+		add_child(damage_label)
 
 func _update_health_bar() -> void:
 	if health_bar == null:
@@ -149,6 +164,8 @@ func _play_ease_out() -> void:
 		collision_shape.disabled = true
 	if health_bar != null:
 		health_bar.visible = false
+	if damage_label != null:
+		damage_label.visible = false
 	var tween := create_tween()
 	tween.tween_property(sprite, "scale", Vector2.ZERO, 0.12)
 	tween.set_trans(Tween.TRANS_QUAD)

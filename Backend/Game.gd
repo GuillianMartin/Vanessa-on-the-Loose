@@ -211,7 +211,7 @@ func _build_hud() -> void:
 	market_label = _make_hud_label("Market", 185)
 	row.add_child(market_label)
 
-	money_label = _make_hud_label("Money: $0", 112)
+	money_label = _make_hud_label("Money: ₱0", 112)
 	row.add_child(money_label)
 
 	reputation_label = _make_hud_label("Rep: 100", 86)
@@ -418,7 +418,7 @@ func _complete_day() -> void:
 	menu_layer.visible = true
 	hud_layer.visible = false
 	menu_title.text = "Day %d Complete" % market_day
-	result_label.text = "Money earned: $%d\nLeftover stock: $%d\nStock bought: $%d\nNet profit: $%d\nFlies killed: %d\nCustomers served: %d\nMarket Reputation: %+d" % [
+	result_label.text = "Money earned: ₱%d\nLeftover stock: ₱%d\nStock bought: ₱%d\nNet profit: ₱%d\nFlies killed: %d\nCustomers served: %d\nMarket Reputation: %+d" % [
 		day_money_earned,
 		day_leftover_earned,
 		day_stock_spent,
@@ -461,7 +461,7 @@ func _game_over(reason: String) -> void:
 	menu_layer.visible = true
 	hud_layer.visible = false
 	menu_title.text = "Game Over"
-	result_label.text = "%s\nReached Day %d\nMoney: $%d\nReputation: %d\nSatisfaction: %d\nFlies swatted: %d" % [
+	result_label.text = "%s\nReached Day %d\nMoney: ₱%d\nReputation: %d\nSatisfaction: %d\nFlies swatted: %d" % [
 		reason,
 		market_day,
 		current_money,
@@ -607,7 +607,7 @@ func _update_hud() -> void:
 	if flies_label:
 		flies_label.text = "Flies: %d" % flies_left
 	if money_label:
-		money_label.text = "Money: $%d" % current_money
+		money_label.text = "Money: ₱%d" % current_money
 	if reputation_label:
 		reputation_label.text = "Rep: %d" % reputation
 	if satisfaction_label:
@@ -616,7 +616,7 @@ func _update_hud() -> void:
 		rush_label.text = "Rush" if rush_active else ""
 
 	if match_timer_label:
-		var minutes := int(maxf(game_timer, 0.0)) / 60
+		var minutes := int(maxf(game_timer, 0.0)) / 60.0
 		var seconds := int(maxf(game_timer, 0.0)) % 60
 		match_timer_label.text = "Time: %d:%02d" % [minutes, seconds]
 
@@ -627,7 +627,7 @@ func _update_upgrade_buttons() -> void:
 		return
 
 	if upgrade_label:
-		upgrade_label.text = "Upgrades  |  Keep $%d Reserve" % UPGRADE_MONEY_RESERVE
+		upgrade_label.text = "Upgrades  |  Keep ₱%d Reserve" % UPGRADE_MONEY_RESERVE
 
 	var display_names := {
 		"damage": "Damage",
@@ -637,7 +637,7 @@ func _update_upgrade_buttons() -> void:
 	for upgrade_name in upgrade_buttons.keys():
 		var button := upgrade_buttons[upgrade_name] as Button
 		var cost := int(swatter_entity.call("get_upgrade_cost", upgrade_name))
-		button.text = "%s\n$%d" % [display_names[upgrade_name], cost]
+		button.text = "%s\n₱%d" % [display_names[upgrade_name], cost]
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
 
 func _update_customer_spawns(delta: float) -> void:
@@ -747,7 +747,7 @@ func _check_loss_conditions() -> void:
 	if not day_active:
 		return
 	if current_money <= 0:
-		_game_over("Money reached $0.")
+		_game_over("Money reached ₱0.")
 	elif customer_satisfaction <= 0:
 		_game_over("Customer satisfaction reached 0.")
 	elif reputation <= 0:

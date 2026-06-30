@@ -297,7 +297,7 @@ func _update_visuals() -> void:
 	
 	# Update the value text dynamically every frame
 	if price_label:
-		price_label.text = "$%d" % get_current_value()
+		price_label.text = "₱%d" % get_current_value()
 		# Position it slightly below the freshness health bar
 		price_label.position = Vector2(-50, radius + 16.0)
 		price_label.custom_minimum_size = Vector2(100, 20)
