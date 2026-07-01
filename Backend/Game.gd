@@ -1,8 +1,8 @@
 extends Node2D
 
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
-const FOOD_SCRIPT := preload("res://Backend/Food_behavior.gd")
-const CUSTOMER_HAND_SCRIPT := preload("res://Backend/CustomerHand.gd")
+const FOOD_SCRIPT := preload("res://Backend/Object Behavior/Food.gd")
+const CUSTOMER_HAND_SCRIPT := preload("res://Backend/Object Behavior/CustomerHand.gd")
 const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const MARKET_PROGRESSION := preload("res://Backend/MarketProgression.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
