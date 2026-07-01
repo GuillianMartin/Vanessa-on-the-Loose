@@ -10,7 +10,8 @@ class FlyAsset:
 
 
 var BossFlies := {
-		{
+		"Boss" : [
+			{
 			"name": "Normal",
 			"flying": FlyAsset.new(load("res://assets/Flies/boss/boss_flying.png"), 5),
 			"eating": FlyAsset.new(load("res://assets/Flies/boss/boss_eating.png"), 12),
@@ -20,6 +21,6 @@ var BossFlies := {
 			"boss_revive": FlyAsset.new(load("res://assets/Flies/boss/boss_revive.png"), 26),
 			"boss_stun": FlyAsset.new(load("res://assets/Flies/boss/boss_stun.png"), 6),
 			"boss_summon": FlyAsset.new(load("res://assets/Flies/boss/boss_summon.png"), 22),
-			"attributes": create_fly_attributes()
-		}
+			}
+		]
 }
