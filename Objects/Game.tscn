@@ -93,8 +93,8 @@ texture = ExtResource("7_fvrtb")
 
 [node name="ContainerNight" type="Sprite2D" parent="Container" unique_id=1070993606]
 texture_filter = 1
-position = Vector2(-9.74723, -2.7132864)
-scale = Vector2(1.6169411, 1.6299239)
+position = Vector2(-9.74723, -7.4615517)
+scale = Vector2(1.6169411, 1.647004)
 texture = ExtResource("10_j6kdu")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Container" unique_id=690823877]
