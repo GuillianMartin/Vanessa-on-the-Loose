@@ -43,8 +43,8 @@ var Flies := {
 	"Base": [
 		{
 			"name": "Normal",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Normal",
 				2,
@@ -175,8 +175,8 @@ var Flies := {
 		},
 		{
 			"name": "Poison",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Poison",
 				4,
@@ -195,8 +195,8 @@ var Flies := {
 		},
 		{
 			"name": "Fire",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Fire",
 				4,
@@ -215,8 +215,8 @@ var Flies := {
 		},
 		{
 			"name": "Thief",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Thief",
 				3,
@@ -235,8 +235,8 @@ var Flies := {
 		},
 		{
 			"name": "Invisible",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Invisible",
 				3,
@@ -255,8 +255,8 @@ var Flies := {
 		},
 		{
 			"name": "Blink",
-			"flying": FlyAsset.new(load("res://assets/Flies/fly_flying.png"), 6),
-			"eating": FlyAsset.new(load("res://assets/Flies/fly_eating.png"), 4),
+			"flying": FlyAsset.new(load("res://assets/Flies/default_fly/fly_flying.png"), 6),
+			"eating": FlyAsset.new(load("res://assets/Flies/default_fly/fly_eating.png"), 4),
 			"attributes": create_fly_attributes(
 				"Blink",
 				4,

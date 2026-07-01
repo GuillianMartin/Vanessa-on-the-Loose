@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ww2hdtfsedpm"
-path="res://.godot/imported/eating_fly.png-163c934de8ddeeb6338a1ebe7f959810.ctex"
+uid="uid://dx2urscfmhnkt"
+path="res://.godot/imported/fly_eating.png-6fd64e0464a18f7683cab19d7de3bfe5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Flies/eating_fly.png"
-dest_files=["res://.godot/imported/eating_fly.png-163c934de8ddeeb6338a1ebe7f959810.ctex"]
+source_file="res://assets/Flies/default_fly/fly_eating.png"
+dest_files=["res://.godot/imported/fly_eating.png-6fd64e0464a18f7683cab19d7de3bfe5.ctex"]
 
 [params]
 
