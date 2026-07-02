@@ -21,6 +21,8 @@ var BossFlies := {
 			"boss_revive": FlyAsset.new(load("res://assets/Flies/boss/boss_revive.png"), 26),
 			"boss_stun": FlyAsset.new(load("res://assets/Flies/boss/boss_stun.png"), 6),
 			"boss_summon": FlyAsset.new(load("res://assets/Flies/boss/boss_summon.png"), 22),
+			"poison_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/poison_effect.png"), 9),
+			"shockwave_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/shockwave_effect.png"), 14),
 			}
 		]
 }
