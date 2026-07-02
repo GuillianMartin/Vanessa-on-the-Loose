@@ -174,7 +174,7 @@ func _make_effect_sprite(node_name: String, asset_key: String) -> Sprite2D:
 	effect_sprite.centered = true
 	effect_sprite.visible = false
 	effect_sprite.z_index = 1
-	effect_sprite.position = Vector2(0.0, 28.0)
+	effect_sprite.position = Vector2.ZERO
 	_scale_effect_sprite(effect_sprite, BOSS_HITBOX_RADIUS * 3.0)
 	return effect_sprite
 
