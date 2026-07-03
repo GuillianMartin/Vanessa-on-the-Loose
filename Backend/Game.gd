@@ -1,10 +1,13 @@
 extends Node2D
 
+signal financial_reports_generated(day_end_report: Dictionary, pre_day_forecast: Dictionary)
+
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
 const FOOD_SCRIPT := preload("res://Backend/Object Behavior/Food.gd")
 const CUSTOMER_HAND_SCRIPT := preload("res://Backend/Object Behavior/CustomerHand.gd")
 const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const MARKET_PROGRESSION := preload("res://Backend/MarketProgression.gd")
+const REWARD_MANAGER := preload("res://Backend/RewardManager.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 
@@ -17,13 +20,12 @@ const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
-const UPGRADE_MONEY_RESERVE := 500
-const LEFTOVER_FOOD_FLY_BONUS_PER_KILL := 0.01
 
 var game_timer := 0.0
 var market_day := 1
 var difficulty_level := 1
 var current_money := 0
+var is_bankrupt := false
 var reputation := 100
 var customer_satisfaction := 100
 var score := 0
@@ -34,9 +36,11 @@ var menu_state := "start"
 var total_flies_killed := 0
 var total_customers_served := 0
 var day_money_start := 0
+var day_gross_sales := 0
 var day_money_earned := 0
 var day_stock_spent := 0
 var day_leftover_earned := 0
+var day_fly_reward := 0
 var day_initial_flies := 0
 var day_flies_killed := 0
 var day_customers_served := 0
@@ -46,6 +50,9 @@ var daily_price_roll := 1.0
 var rush_active := false
 var rush_timer := 0.0
 var rush_check_timer := 0.0
+var current_day_report := {}
+var next_day_forecast := {}
+var prepared_restock_plan := {}
 
 var active_placed_food_records: Array[Dictionary] = []
 
@@ -77,6 +84,7 @@ var upgrade_label: Label
 var upgrade_buttons := {}
 var menu_title: Label
 var result_label: Label
+var forecast_warning_label: Label
 var play_button: Button
 var swatter_layer: CanvasLayer
 var swatter_sprite: Sprite2D
@@ -303,7 +311,7 @@ func _build_menu() -> void:
 	menu_layer.add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(430, 285)
+	panel.custom_minimum_size = Vector2(560, 430)
 	center.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -324,9 +332,18 @@ func _build_menu() -> void:
 	content.add_child(menu_title)
 
 	result_label = Label.new()
-	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	result_label.text = ""
+	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_label.custom_minimum_size = Vector2(480, 0)
 	content.add_child(result_label)
+
+	forecast_warning_label = Label.new()
+	forecast_warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	forecast_warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	forecast_warning_label.custom_minimum_size = Vector2(480, 0)
+	forecast_warning_label.visible = false
+	content.add_child(forecast_warning_label)
 
 	play_button = Button.new()
 	play_button.text = "Play"
@@ -348,18 +365,29 @@ func _show_start_menu() -> void:
 	_clear_customers()
 	menu_title.text = "Bangaw Fly Market"
 	result_label.text = "Run a stall, protect the food, earn profit, and survive as many market days as possible."
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
 	play_button.text = "Start Market"
 
 func _on_menu_button_pressed() -> void:
-	if menu_state == "continue":
-		_start_day()
-	else:
-		_start_new_run()
+	match menu_state:
+		"day_end_summary":
+			_show_pre_day_forecast_screen()
+		"pre_day_forecast":
+			_start_day()
+		"start", "game_over":
+			_start_new_run()
+		_:
+			_start_new_run()
 
 func _start_new_run() -> void:
 	market_day = 1
 	difficulty_level = 1
 	current_money = MARKET_PROGRESSION.STARTING_MONEY
+	is_bankrupt = false
+	current_day_report = {}
+	next_day_forecast = {}
+	prepared_restock_plan = {}
 	reputation = MARKET_PROGRESSION.STARTING_REPUTATION
 	customer_satisfaction = MARKET_PROGRESSION.STARTING_SATISFACTION
 	score = 0
@@ -372,11 +400,17 @@ func _start_new_run() -> void:
 func _start_day() -> void:
 	active_market_event = MARKET_PROGRESSION.get_market_event(market_day)
 	difficulty_level = MARKET_PROGRESSION.get_difficulty_level(market_day)
-	daily_price_roll = MARKET_PROGRESSION.get_daily_price_roll()
+	if _has_prepared_restock_plan(market_day):
+		active_market_event = prepared_restock_plan["market_event"] as Dictionary
+		daily_price_roll = float(prepared_restock_plan["daily_price_roll"])
+	else:
+		daily_price_roll = MARKET_PROGRESSION.get_daily_price_roll()
 	day_money_start = current_money
+	day_gross_sales = 0
 	day_money_earned = 0
 	day_stock_spent = 0
 	day_leftover_earned = 0
+	day_fly_reward = 0
 	day_flies_killed = 0
 	day_customers_served = 0
 	day_reputation_start = reputation
@@ -394,13 +428,19 @@ func _start_day() -> void:
 	day_active = true
 	_set_swatter_active(true)
 	menu_layer.visible = false
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
 	hud_layer.visible = true
 	food_container.visible = true
 	fly_container.visible = true
 	customer_container.visible = true
 	_apply_market_visuals()
 	_update_hud()
+	var used_prepared_restock_plan := _has_prepared_restock_plan(market_day)
 	_spawn_food()
+	if used_prepared_restock_plan:
+		prepared_restock_plan = {}
+	_update_bankruptcy_state()
 	if day_active:
 		_spawn_flies()
 
@@ -408,33 +448,31 @@ func _complete_day() -> void:
 	day_active = false
 	_set_swatter_active(false)
 	day_leftover_earned = _sell_leftover_food()
+	day_fly_reward = REWARD_MANAGER.calculate_fly_reward(day_flies_killed)
+	current_money += day_fly_reward
+	day_money_earned += day_fly_reward
 	_clear_flies()
 	_clear_food()
 	_clear_customers()
 
-	var net_profit := current_money - day_money_start
-	var reputation_change := reputation - day_reputation_start
-	menu_state = "continue"
-	menu_layer.visible = true
-	hud_layer.visible = false
-	menu_title.text = "Day %d Complete" % market_day
-	result_label.text = "Money earned: ₱%d\nLeftover stock: ₱%d\nStock bought: ₱%d\nNet profit: ₱%d\nFlies killed: %d\nCustomers served: %d\nMarket Reputation: %+d" % [
-		day_money_earned,
-		day_leftover_earned,
-		day_stock_spent,
-		net_profit,
-		day_flies_killed,
-		day_customers_served,
-		reputation_change
-	]
+	var completed_market_day := market_day
+	current_day_report = generate_day_end_report()
 	market_day += 1
-	play_button.text = "Start Day %d" % market_day
+	next_day_forecast = generate_pre_day_forecast()
+	financial_reports_generated.emit(current_day_report, next_day_forecast)
+
+	if current_money < 0:
+		market_day = completed_market_day
+		_game_over_from_day_end("Bankruptcy was not recovered before market close.")
+		return
+
+	is_bankrupt = false
+	_show_day_end_summary_screen(completed_market_day)
 
 func _sell_leftover_food() -> int:
 	if food_container == null:
 		return 0
 
-	var fly_bonus_multiplier := 1.0 + float(day_flies_killed) * LEFTOVER_FOOD_FLY_BONUS_PER_KILL
 	var payout := 0
 	for food in food_container.get_children():
 		if food == null or food.is_queued_for_deletion():
@@ -442,7 +480,7 @@ func _sell_leftover_food() -> int:
 		if not food.has_method("get_fresh_sell_value"):
 			continue
 		var fresh_value := int(food.call("get_fresh_sell_value"))
-		payout += int(ceilf(float(fresh_value) * fly_bonus_multiplier))
+		payout += fresh_value
 
 	current_money += payout
 	day_money_earned += payout
@@ -452,7 +490,14 @@ func _game_over(reason: String) -> void:
 	if not day_active:
 		return
 
+	_show_game_over(reason)
+
+func _game_over_from_day_end(reason: String) -> void:
+	_show_game_over(reason)
+
+func _show_game_over(reason: String) -> void:
 	day_active = false
+	is_bankrupt = current_money < 0
 	_set_swatter_active(false)
 	_clear_flies()
 	_clear_food()
@@ -460,6 +505,8 @@ func _game_over(reason: String) -> void:
 	menu_state = "game_over"
 	menu_layer.visible = true
 	hud_layer.visible = false
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
 	menu_title.text = "Game Over"
 	result_label.text = "%s\nReached Day %d\nMoney: ₱%d\nReputation: %d\nSatisfaction: %d\nFlies swatted: %d" % [
 		reason,
@@ -470,6 +517,119 @@ func _game_over(reason: String) -> void:
 		total_flies_killed
 	]
 	play_button.text = "Restart Market"
+
+func _update_bankruptcy_state() -> void:
+	is_bankrupt = current_money < 0
+
+func generate_day_end_report() -> Dictionary:
+	return {
+		"gross_sales": day_gross_sales,
+		"leftover_stock_value": day_leftover_earned,
+		"customers_served": day_customers_served,
+		"market_reputation": reputation,
+		"market_reputation_change": reputation - day_reputation_start,
+		"flies_killed": day_flies_killed,
+		"fly_bounty_bonus": day_fly_reward,
+		"stock_costs": day_stock_spent,
+		"total_wallet_end_of_day": current_money,
+	}
+
+func generate_pre_day_forecast() -> Dictionary:
+	var restock_plan := _prepare_restock_plan(market_day)
+	prepared_restock_plan = restock_plan
+	var carried_over_wallet := current_money
+	var expected_restock_cost := int(restock_plan["expected_restock_cost"])
+	var final_starting_capital := carried_over_wallet - expected_restock_cost
+	return {
+		"carried_over_wallet": carried_over_wallet,
+		"expected_restock_cost": expected_restock_cost,
+		"final_starting_capital": final_starting_capital,
+		"is_bankruptcy_state": final_starting_capital < 0,
+	}
+
+func _show_day_end_summary_screen(completed_market_day: int) -> void:
+	menu_state = "day_end_summary"
+	menu_layer.visible = true
+	hud_layer.visible = false
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
+
+	menu_title.text = "Day %d Complete" % completed_market_day
+	result_label.text = "--- TODAY'S PERFORMANCE ---\nCustomers Served: %d\nMarket Reputation: %d (%+d)\nFlies Swatted: %d\n\n--- FINANCIALS ---\nGross Sales: +%s\nLeftover Stock Sold: +%s\nFly Bounty: +%s\n(Minus) Stock Costs: -%s\nTotal End of Day Wallet: %s" % [
+		_report_int(current_day_report, "customers_served"),
+		_report_int(current_day_report, "market_reputation"),
+		_report_int(current_day_report, "market_reputation_change"),
+		_report_int(current_day_report, "flies_killed"),
+		_format_peso(_report_int(current_day_report, "gross_sales")),
+		_format_peso(_report_int(current_day_report, "leftover_stock_value")),
+		_format_peso(_report_int(current_day_report, "fly_bounty_bonus")),
+		_format_peso(_report_int(current_day_report, "stock_costs")),
+		_format_peso(_report_int(current_day_report, "total_wallet_end_of_day")),
+	]
+	play_button.text = "Next: Financial Forecast"
+
+func _show_pre_day_forecast_screen() -> void:
+	menu_state = "pre_day_forecast"
+	menu_layer.visible = true
+	hud_layer.visible = false
+
+	menu_title.text = "Day %d Forecast" % market_day
+	result_label.text = "--- TOMORROW'S FORECAST ---\nCarried Over Wallet: %s\nExpected Restock Cost: -%s\nStarting Capital for Tomorrow: %s" % [
+		_format_peso(_report_int(next_day_forecast, "carried_over_wallet")),
+		_format_peso(_report_int(next_day_forecast, "expected_restock_cost")),
+		_format_peso(_report_int(next_day_forecast, "final_starting_capital")),
+	]
+
+	if forecast_warning_label:
+		forecast_warning_label.visible = true
+		if bool(next_day_forecast.get("is_bankruptcy_state", false)):
+			forecast_warning_label.text = "⚠️ WARNING: BANKRUPTCY IMMINENT! You must break even before the day ends!"
+			forecast_warning_label.add_theme_color_override("font_color", Color(1.0, 0.12, 0.08))
+		else:
+			forecast_warning_label.text = "Finances Stable"
+			forecast_warning_label.add_theme_color_override("font_color", Color(0.18, 0.72, 0.30))
+
+	play_button.text = "Start Day %d" % market_day
+
+func _format_peso(amount: int) -> String:
+	return "₱%d" % amount
+
+func _report_int(report: Dictionary, key: String) -> int:
+	return int(report.get(key, 0))
+
+func _prepare_restock_plan(day: int) -> Dictionary:
+	if _has_prepared_restock_plan(day):
+		return prepared_restock_plan
+
+	var event := MARKET_PROGRESSION.get_market_event(day)
+	var price_roll := MARKET_PROGRESSION.get_daily_price_roll()
+	var food_configs: Array = []
+	var expected_restock_cost := 0
+	var preferred_category := str(event.get("food_category", ""))
+
+	for _index in range(_get_target_food_count_for_day(day)):
+		var config = FOOD_SCRIPT.get_random_config_for_category(preferred_category)
+		food_configs.append(config)
+		expected_restock_cost += _get_stock_cost_for_config(config, day, event, price_roll)
+
+	return {
+		"day": day,
+		"market_event": event,
+		"daily_price_roll": price_roll,
+		"food_configs": food_configs,
+		"expected_restock_cost": expected_restock_cost,
+	}
+
+func _has_prepared_restock_plan(day: int) -> bool:
+	return int(prepared_restock_plan.get("day", -1)) == day
+
+func _get_stock_cost_for_config(config, day: int, event: Dictionary, price_roll: float) -> int:
+	if config == null:
+		return 0
+
+	var category: String = config.category
+	var market_multiplier := MARKET_PROGRESSION.get_market_price_multiplier(day, price_roll, event, category)
+	return int(ceilf(float(config.base_market_price) * market_multiplier))
 
 func _spawn_flies() -> void:
 	_clear_flies()
@@ -512,23 +672,18 @@ func _spawn_food() -> void:
 func _spawn_single_food_loop() -> bool:
 	var polygon := _get_container_polygon_global()
 	var preferred_category := str(active_market_event.get("food_category", ""))
-	var config = FOOD_SCRIPT.get_random_config_for_category(preferred_category)
+	var config = _get_next_restock_config(preferred_category)
 	var food := FOOD_SCRIPT.new() as Node2D
 	food.call("configure", config)
 	_apply_food_economy(food)
 	var stock_cost: int = food.call("get_stock_cost")
-
-	if current_money < stock_cost:
-		food.free()
-		current_money = 0
-		_game_over("Money ran out buying food stock.")
-		return false
 
 	for _attempt in range(FOOD_PLACEMENT_ATTEMPTS):
 		var candidate := _get_random_point_in_polygon(polygon, config.radius)
 		if _is_food_position_clear(candidate, config.radius, polygon, active_placed_food_records):
 			current_money -= stock_cost
 			day_stock_spent += stock_cost
+			_update_bankruptcy_state()
 			food.position = candidate
 			food.connect("depleted", _on_food_depleted)
 			food_container.add_child(food)
@@ -537,9 +692,6 @@ func _spawn_single_food_loop() -> bool:
 				"position": candidate,
 				"radius": config.radius,
 			})
-			_check_loss_conditions()
-			if not day_active:
-				return false
 			_update_hud()
 			return true
 
@@ -627,7 +779,7 @@ func _update_upgrade_buttons() -> void:
 		return
 
 	if upgrade_label:
-		upgrade_label.text = "Upgrades  |  Keep ₱%d Reserve" % UPGRADE_MONEY_RESERVE
+		upgrade_label.text = "Upgrades"
 
 	var display_names := {
 		"damage": "Damage",
@@ -673,6 +825,8 @@ func _spawn_customer_hand() -> void:
 func _on_buyer_transaction_finished(hand_node: Area2D, status: String, payout: int) -> void:
 	if status == "success":
 		current_money += payout
+		_update_bankruptcy_state()
+		day_gross_sales += payout
 		day_money_earned += payout
 		day_customers_served += 1
 		total_customers_served += 1
@@ -710,12 +864,13 @@ func _on_upgrade_pressed(upgrade_name: String) -> void:
 		return
 
 	current_money -= cost
+	_update_bankruptcy_state()
 	swatter_entity.call("upgrade", upgrade_name)
 	_check_loss_conditions()
 	_update_hud()
 
 func _can_afford_upgrade(cost: int) -> bool:
-	return current_money - cost >= UPGRADE_MONEY_RESERVE
+	return current_money >= cost
 
 func _update_rush_hour(delta: float) -> void:
 	if rush_active:
@@ -746,9 +901,7 @@ func _adjust_satisfaction(amount: int) -> void:
 func _check_loss_conditions() -> void:
 	if not day_active:
 		return
-	if current_money <= 0:
-		_game_over("Money reached ₱0.")
-	elif customer_satisfaction <= 0:
+	if customer_satisfaction <= 0:
 		_game_over("Customer satisfaction reached 0.")
 	elif reputation <= 0:
 		_game_over("Market reputation reached 0.")
@@ -763,7 +916,19 @@ func _get_active_customer_count() -> int:
 	return count
 
 func _get_target_food_count() -> int:
-	return mini(BASE_FOOD_COUNT + int(floor(float(market_day - 1) / 6.0)), 8)
+	return _get_target_food_count_for_day(market_day)
+
+func _get_target_food_count_for_day(day: int) -> int:
+	return mini(BASE_FOOD_COUNT + int(floor(float(day - 1) / 6.0)), 8)
+
+func _get_next_restock_config(preferred_category: String):
+	if _has_prepared_restock_plan(market_day):
+		var planned_configs := prepared_restock_plan.get("food_configs", []) as Array
+		var config_index := active_placed_food_records.size()
+		if config_index < planned_configs.size():
+			return planned_configs[config_index]
+
+	return FOOD_SCRIPT.get_random_config_for_category(preferred_category)
 
 func _apply_market_visuals() -> void:
 	var event_tint: Color = active_market_event.get("tint", Color.WHITE)

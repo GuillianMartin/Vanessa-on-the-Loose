@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dqt8gp57mr8e2"]
 
-[ext_resource type="Texture2D" uid="uid://c38mepwo75c12" path="res://assets/Flies/fly_flying.png" id="1_qk0kf"]
-[ext_resource type="Script" uid="uid://bwl0c57baweg7" path="res://Backend/Object Behavior/Fly.gd" id="2_qk0kf"]
+[ext_resource type="Texture2D" uid="uid://cerbav0tw11rg" path="res://assets/Flies/default_fly/fly_flying.png" id="1_qk0kf"]
+[ext_resource type="Script" uid="uid://qjkrcs3tvhvq" path="res://Backend/Object Behavior/Fly.gd" id="2_qk0kf"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_qk0kf"]
 radius = 46.3
