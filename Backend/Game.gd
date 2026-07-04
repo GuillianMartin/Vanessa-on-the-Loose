@@ -20,11 +20,14 @@ const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
+const MAX_DEBT_LIMIT: int = -500
+const MAX_BANKRUPTCY_STRIKES: int = 3
 
 var game_timer := 0.0
 var market_day := 1
 var difficulty_level := 1
 var current_money := 0
+var bankruptcy_strikes: int = 0
 var is_bankrupt := false
 var reputation := 100
 var customer_satisfaction := 100
@@ -53,6 +56,8 @@ var rush_check_timer := 0.0
 var current_day_report := {}
 var next_day_forecast := {}
 var prepared_restock_plan := {}
+var bankruptcy_strike_forecast_day := -1
+var restock_costs_prepaid := false
 
 var active_placed_food_records: Array[Dictionary] = []
 
@@ -384,10 +389,13 @@ func _start_new_run() -> void:
 	market_day = 1
 	difficulty_level = 1
 	current_money = MARKET_PROGRESSION.STARTING_MONEY
+	bankruptcy_strikes = 0
 	is_bankrupt = false
 	current_day_report = {}
 	next_day_forecast = {}
 	prepared_restock_plan = {}
+	bankruptcy_strike_forecast_day = -1
+	restock_costs_prepaid = false
 	reputation = MARKET_PROGRESSION.STARTING_REPUTATION
 	customer_satisfaction = MARKET_PROGRESSION.STARTING_SATISFACTION
 	score = 0
@@ -398,13 +406,17 @@ func _start_new_run() -> void:
 	_start_day()
 
 func _start_day() -> void:
+	var used_prepared_restock_plan := _has_prepared_restock_plan(market_day)
 	active_market_event = MARKET_PROGRESSION.get_market_event(market_day)
 	difficulty_level = MARKET_PROGRESSION.get_difficulty_level(market_day)
-	if _has_prepared_restock_plan(market_day):
+	if used_prepared_restock_plan:
 		active_market_event = prepared_restock_plan["market_event"] as Dictionary
 		daily_price_roll = float(prepared_restock_plan["daily_price_roll"])
+		current_money = int(next_day_forecast.get("final_starting_capital", current_money))
 	else:
 		daily_price_roll = MARKET_PROGRESSION.get_daily_price_roll()
+	is_bankrupt = current_money < 0
+	restock_costs_prepaid = used_prepared_restock_plan
 	day_money_start = current_money
 	day_gross_sales = 0
 	day_money_earned = 0
@@ -434,12 +446,15 @@ func _start_day() -> void:
 	food_container.visible = true
 	fly_container.visible = true
 	customer_container.visible = true
+	if _check_debt_limit("Maximum debt reached."):
+		restock_costs_prepaid = false
+		return
 	_apply_market_visuals()
 	_update_hud()
-	var used_prepared_restock_plan := _has_prepared_restock_plan(market_day)
 	_spawn_food()
 	if used_prepared_restock_plan:
 		prepared_restock_plan = {}
+	restock_costs_prepaid = false
 	_update_bankruptcy_state()
 	if day_active:
 		_spawn_flies()
@@ -457,16 +472,18 @@ func _complete_day() -> void:
 
 	var completed_market_day := market_day
 	current_day_report = generate_day_end_report()
-	market_day += 1
-	next_day_forecast = generate_pre_day_forecast()
-	financial_reports_generated.emit(current_day_report, next_day_forecast)
-
-	if current_money < 0:
-		market_day = completed_market_day
+	if is_bankrupt and current_money < 0:
 		_game_over_from_day_end("Bankruptcy was not recovered before market close.")
 		return
 
-	is_bankrupt = false
+	market_day += 1
+	next_day_forecast = generate_pre_day_forecast()
+	financial_reports_generated.emit(current_day_report, next_day_forecast)
+	if bool(next_day_forecast.get("is_bankruptcy_state", false)) and bankruptcy_strikes >= MAX_BANKRUPTCY_STRIKES:
+		market_day = completed_market_day
+		_game_over_from_day_end("Bankruptcy strike limit reached.")
+		return
+
 	_show_day_end_summary_screen(completed_market_day)
 
 func _sell_leftover_food() -> int:
@@ -519,7 +536,7 @@ func _show_game_over(reason: String) -> void:
 	play_button.text = "Restart Market"
 
 func _update_bankruptcy_state() -> void:
-	is_bankrupt = current_money < 0
+	pass
 
 func generate_day_end_report() -> Dictionary:
 	return {
@@ -540,11 +557,17 @@ func generate_pre_day_forecast() -> Dictionary:
 	var carried_over_wallet := current_money
 	var expected_restock_cost := int(restock_plan["expected_restock_cost"])
 	var final_starting_capital := carried_over_wallet - expected_restock_cost
+	var is_bankruptcy_state := final_starting_capital < 0
+	if is_bankruptcy_state and bankruptcy_strike_forecast_day != market_day:
+		bankruptcy_strikes += 1
+		bankruptcy_strike_forecast_day = market_day
+	is_bankrupt = is_bankruptcy_state
 	return {
 		"carried_over_wallet": carried_over_wallet,
 		"expected_restock_cost": expected_restock_cost,
 		"final_starting_capital": final_starting_capital,
-		"is_bankruptcy_state": final_starting_capital < 0,
+		"is_bankruptcy_state": is_bankruptcy_state,
+		"bankruptcy_strikes": bankruptcy_strikes,
 	}
 
 func _show_day_end_summary_screen(completed_market_day: int) -> void:
@@ -583,7 +606,8 @@ func _show_pre_day_forecast_screen() -> void:
 	if forecast_warning_label:
 		forecast_warning_label.visible = true
 		if bool(next_day_forecast.get("is_bankruptcy_state", false)):
-			forecast_warning_label.text = "⚠️ WARNING: BANKRUPTCY IMMINENT! You must break even before the day ends!"
+			var strike_count := int(next_day_forecast.get("bankruptcy_strikes", bankruptcy_strikes))
+			forecast_warning_label.text = "⚠️ WARNING: BANKRUPTCY IMMINENT! (Strike %d of %d)" % [strike_count, MAX_BANKRUPTCY_STRIKES]
 			forecast_warning_label.add_theme_color_override("font_color", Color(1.0, 0.12, 0.08))
 		else:
 			forecast_warning_label.text = "Finances Stable"
@@ -681,9 +705,15 @@ func _spawn_single_food_loop() -> bool:
 	for _attempt in range(FOOD_PLACEMENT_ATTEMPTS):
 		var candidate := _get_random_point_in_polygon(polygon, config.radius)
 		if _is_food_position_clear(candidate, config.radius, polygon, active_placed_food_records):
-			current_money -= stock_cost
+			if not restock_costs_prepaid:
+				current_money -= stock_cost
+				_update_bankruptcy_state()
+				if _check_debt_limit("Maximum debt reached."):
+					food.free()
+					return false
 			day_stock_spent += stock_cost
 			_update_bankruptcy_state()
+			spawn_floating_money_text(stock_cost, candidate, false)
 			food.position = candidate
 			food.connect("depleted", _on_food_depleted)
 			food_container.add_child(food)
@@ -826,6 +856,7 @@ func _on_buyer_transaction_finished(hand_node: Area2D, status: String, payout: i
 	if status == "success":
 		current_money += payout
 		_update_bankruptcy_state()
+		spawn_floating_money_text(payout, hand_node.global_position, true)
 		day_gross_sales += payout
 		day_money_earned += payout
 		day_customers_served += 1
@@ -865,6 +896,8 @@ func _on_upgrade_pressed(upgrade_name: String) -> void:
 
 	current_money -= cost
 	_update_bankruptcy_state()
+	if _check_debt_limit("Maximum debt reached."):
+		return
 	swatter_entity.call("upgrade", upgrade_name)
 	_check_loss_conditions()
 	_update_hud()
@@ -901,10 +934,38 @@ func _adjust_satisfaction(amount: int) -> void:
 func _check_loss_conditions() -> void:
 	if not day_active:
 		return
+	if _check_debt_limit("Maximum debt reached."):
+		return
 	if customer_satisfaction <= 0:
 		_game_over("Customer satisfaction reached 0.")
 	elif reputation <= 0:
 		_game_over("Market reputation reached 0.")
+
+func _check_debt_limit(reason: String) -> bool:
+	if day_active and current_money <= MAX_DEBT_LIMIT:
+		_game_over(reason)
+		return true
+	return false
+
+func spawn_floating_money_text(amount: int, position: Vector2, is_income: bool) -> void:
+	if hud_layer == null:
+		return
+
+	var label := Label.new()
+	label.text = "%s₱%d" % ["+" if is_income else "-", abs(amount)]
+	label.add_theme_color_override("font_color", Color(0.16, 0.82, 0.28) if is_income else Color(1.0, 0.16, 0.12))
+	label.add_theme_font_size_override("font_size", 26)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.position = position
+	hud_layer.add_child(label)
+
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_parallel(true)
+	tween.tween_property(label, "position", position + Vector2(0, -56), 1.35)
+	tween.tween_property(label, "modulate:a", 0.0, 1.35)
+	tween.chain().tween_callback(Callable(label, "queue_free"))
 
 func _get_active_customer_count() -> int:
 	if customer_container == null:
