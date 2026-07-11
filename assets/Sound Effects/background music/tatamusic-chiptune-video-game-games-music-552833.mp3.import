@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bxrepoii7a7j7"
+path="res://.godot/imported/tatamusic-chiptune-video-game-games-music-552833.mp3-ca89f90699e9d5ab7b1dd90d583dc3a9.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/background music/tatamusic-chiptune-video-game-games-music-552833.mp3"
+dest_files=["res://.godot/imported/tatamusic-chiptune-video-game-games-music-552833.mp3-ca89f90699e9d5ab7b1dd90d583dc3a9.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
