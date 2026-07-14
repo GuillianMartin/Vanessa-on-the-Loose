@@ -3,6 +3,7 @@ extends Node2D
 signal financial_reports_generated(day_end_report: Dictionary, pre_day_forecast: Dictionary)
 
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
+const BOSS_FLY_SCRIPT := preload("res://Backend/Object Behavior/BossFly.gd")
 const FOOD_SCRIPT := preload("res://Backend/Object Behavior/Food.gd")
 const CUSTOMER_HAND_SCRIPT := preload("res://Backend/Object Behavior/CustomerHand.gd")
 const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
@@ -27,6 +28,8 @@ var game_timer := 0.0
 var market_day := 1
 var difficulty_level := 1
 var current_money := 0
+var boss_round_active := false
+var boss_round_pending := false
 var bankruptcy_strikes: int = 0
 var is_bankrupt := false
 var reputation := 100
@@ -96,12 +99,19 @@ var swatter_sprite: Sprite2D
 var swatter_entity: Node
 var swatter_energy_bar: ProgressBar
 var swatter_energy_label: Label
+var boss_health_label: Label
+var boss_health_bar: ProgressBar
 var swatter_attack_timer := 0.0
 var swatter_frame_timer := 0.0
 var customer_spawn_timer := 0.0
+var screen_shake_timer := 0.0
+var screen_shake_duration := 0.0
+var screen_shake_strength := 0.0
+var base_scene_position := Vector2.ZERO
 
 func _ready() -> void:
 	randomize()
+	base_scene_position = position
 	_build_game_nodes()
 	_build_swatter()
 	_build_hud()
@@ -109,6 +119,7 @@ func _ready() -> void:
 	_show_start_menu()
 
 func _process(delta: float) -> void:
+	_update_screen_shake(delta)
 	if not day_active:
 		return
 
@@ -117,6 +128,9 @@ func _process(delta: float) -> void:
 	_update_customer_spawns(delta)
 	_process_day_clock(delta)
 	_maintain_food_loop()
+	if boss_round_active:
+		_update_background_animation(delta)
+		return
 	_maintain_fly_loop()
 	_update_background_animation(delta)
 
@@ -127,6 +141,10 @@ func _input(event: InputEvent) -> void:
 		_start_swatter_attack()
 
 func _process_day_clock(delta: float) -> void:
+	if boss_round_active:
+		_update_hud()
+		return
+
 	game_timer -= delta
 	if game_timer <= 0.0:
 		_complete_day()
@@ -139,6 +157,9 @@ func _maintain_food_loop() -> void:
 		_spawn_single_food_loop()
 
 func _maintain_fly_loop() -> void:
+	if boss_round_active:
+		return
+
 	var desired_floor: int = maxi(5, int(ceil(float(MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)) * 0.45)))
 	if flies_left >= desired_floor:
 		return
@@ -257,6 +278,27 @@ func _build_hud() -> void:
 	swatter_energy_bar.value = 100.0
 	row.add_child(swatter_energy_bar)
 
+	var boss_row := HBoxContainer.new()
+	boss_row.name = "BossHealth"
+	boss_row.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	boss_row.offset_left = 360
+	boss_row.offset_top = 58
+	boss_row.offset_right = -360
+	boss_row.offset_bottom = 88
+	boss_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	boss_row.visible = false
+	hud_layer.add_child(boss_row)
+
+	boss_health_label = _make_hud_label("Boss Lives: 5/5", 150)
+	boss_row.add_child(boss_health_label)
+
+	boss_health_bar = ProgressBar.new()
+	boss_health_bar.show_percentage = false
+	boss_health_bar.custom_minimum_size = Vector2(260, 14)
+	boss_health_bar.max_value = 10.0
+	boss_health_bar.value = 10.0
+	boss_row.add_child(boss_health_bar)
+
 	_build_upgrade_panel()
 
 func _make_hud_label(text: String, width: float) -> Label:
@@ -359,7 +401,10 @@ func _build_menu() -> void:
 func _show_start_menu() -> void:
 	menu_state = "start"
 	day_active = false
+	boss_round_active = false
+	boss_round_pending = false
 	_set_swatter_active(false)
+	_set_boss_health_visible(false)
 	menu_layer.visible = true
 	hud_layer.visible = false
 	fly_container.visible = false
@@ -388,6 +433,8 @@ func _on_menu_button_pressed() -> void:
 func _start_new_run() -> void:
 	market_day = 1
 	difficulty_level = 1
+	boss_round_active = false
+	boss_round_pending = false
 	current_money = MARKET_PROGRESSION.STARTING_MONEY
 	bankruptcy_strikes = 0
 	is_bankrupt = false
@@ -406,7 +453,9 @@ func _start_new_run() -> void:
 	_start_day()
 
 func _start_day() -> void:
-	var used_prepared_restock_plan := _has_prepared_restock_plan(market_day)
+	var starting_boss_round := boss_round_pending
+	var used_prepared_restock_plan := not starting_boss_round and _has_prepared_restock_plan(market_day)
+	boss_round_active = starting_boss_round
 	active_market_event = MARKET_PROGRESSION.get_market_event(market_day)
 	difficulty_level = MARKET_PROGRESSION.get_difficulty_level(market_day)
 	if used_prepared_restock_plan:
@@ -416,7 +465,7 @@ func _start_day() -> void:
 	else:
 		daily_price_roll = MARKET_PROGRESSION.get_daily_price_roll()
 	is_bankrupt = current_money < 0
-	restock_costs_prepaid = used_prepared_restock_plan
+	restock_costs_prepaid = used_prepared_restock_plan or boss_round_active
 	day_money_start = current_money
 	day_gross_sales = 0
 	day_money_earned = 0
@@ -426,8 +475,8 @@ func _start_day() -> void:
 	day_flies_killed = 0
 	day_customers_served = 0
 	day_reputation_start = reputation
-	game_timer = MARKET_PROGRESSION.DAY_DURATION_SECONDS
-	flies_left = MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)
+	game_timer = 999999.0 if boss_round_active else MARKET_PROGRESSION.DAY_DURATION_SECONDS
+	flies_left = 0 if boss_round_active else MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)
 	day_initial_flies = flies_left
 	rush_active = false
 	rush_timer = 0.0
@@ -457,9 +506,16 @@ func _start_day() -> void:
 	restock_costs_prepaid = false
 	_update_bankruptcy_state()
 	if day_active:
-		_spawn_flies()
+		if boss_round_active:
+			_spawn_boss_fight()
+		else:
+			_spawn_flies()
 
 func _complete_day() -> void:
+	if boss_round_active:
+		_complete_boss_round()
+		return
+
 	day_active = false
 	_set_swatter_active(false)
 	day_leftover_earned = _sell_leftover_food()
@@ -476,6 +532,7 @@ func _complete_day() -> void:
 		_game_over_from_day_end("Bankruptcy was not recovered before market close.")
 		return
 
+	boss_round_pending = _is_boss_day(completed_market_day)
 	market_day += 1
 	next_day_forecast = generate_pre_day_forecast()
 	financial_reports_generated.emit(current_day_report, next_day_forecast)
@@ -514,8 +571,11 @@ func _game_over_from_day_end(reason: String) -> void:
 
 func _show_game_over(reason: String) -> void:
 	day_active = false
+	boss_round_active = false
+	boss_round_pending = false
 	is_bankrupt = current_money < 0
 	_set_swatter_active(false)
+	_set_boss_health_visible(false)
 	_clear_flies()
 	_clear_food()
 	_clear_customers()
@@ -744,6 +804,48 @@ func _clear_flies() -> void:
 		for child in fly_container.get_children():
 			child.queue_free()
 
+func _is_boss_day(day: int) -> bool:
+	return day > 0 and day % 10 == 0
+
+func _spawn_boss_fight() -> void:
+	_clear_flies()
+	_clear_customers()
+	var bounds := _get_fly_bounds()
+	var boss := BOSS_FLY_SCRIPT.new() as Node2D
+	boss.name = "BossFly"
+	boss.position = Vector2(bounds.position.x + bounds.size.x * 0.5, bounds.position.y + bounds.size.y * 0.5)
+	boss.connect("died", Callable(self, "_on_boss_died"))
+	boss.connect("spawn_requested", Callable(self, "_on_boss_spawn_requested"))
+	boss.connect("health_changed", Callable(self, "_on_boss_health_changed"))
+	boss.connect("shockwave_released", Callable(self, "_on_boss_shockwave_released"))
+	fly_container.add_child(boss)
+	boss.call("configure", bounds, 5)
+	boss.call("begin_boss_fight")
+	flies_left = 1
+	_update_hud()
+
+func _on_boss_died(boss_node: Node) -> void:
+	if not day_active:
+		return
+	score += 1
+	total_flies_killed += 1
+	day_flies_killed += 1
+	flies_left = 0
+	if swatter_entity != null:
+		swatter_entity.call("register_fly_kill")
+	_complete_boss_round()
+
+func _complete_boss_round() -> void:
+	day_active = false
+	boss_round_active = false
+	boss_round_pending = false
+	_set_swatter_active(false)
+	_clear_flies()
+	_clear_food()
+	_clear_customers()
+	_set_boss_health_visible(false)
+	_start_day()
+
 func _clear_food() -> void:
 	if food_container:
 		for child in food_container.get_children():
@@ -772,8 +874,22 @@ func _on_fly_died(_fly: Area2D) -> void:
 		swatter_entity.call("register_fly_kill")
 	_update_hud()
 
+func _on_boss_spawn_requested(_spawn_position: Vector2, _behavior_name: String = "") -> void:
+	pass
+
+func _on_boss_health_changed(lives_remaining: int, max_lives: int, health: int, max_health: int) -> void:
+	_set_boss_health_visible(true)
+	if boss_health_label:
+		boss_health_label.text = "Boss Lives: %d/%d" % [lives_remaining, max_lives]
+	if boss_health_bar:
+		boss_health_bar.max_value = max_health
+		boss_health_bar.value = health
+
+func _on_boss_shockwave_released(_origin: Vector2) -> void:
+	_start_screen_shake(0.45, 10.0)
+
 func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = "") -> void:
-	if not day_active:
+	if not day_active or boss_round_active:
 		return
 	var bounds := _get_fly_bounds()
 	var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(70.0, 120.0)
@@ -785,9 +901,9 @@ func _update_hud() -> void:
 	if day_label:
 		day_label.text = "Day %d" % market_day
 	if market_label:
-		market_label.text = str(active_market_event.get("name", "Market"))
+		market_label.text = "Boss Fight" if boss_round_active else str(active_market_event.get("name", "Market"))
 	if flies_label:
-		flies_label.text = "Flies: %d" % flies_left
+		flies_label.text = "Boss" if boss_round_active else "Flies: %d" % flies_left
 	if money_label:
 		money_label.text = "Money: ₱%d" % current_money
 	if reputation_label:
@@ -796,13 +912,24 @@ func _update_hud() -> void:
 		satisfaction_label.text = "Sat: %d" % customer_satisfaction
 	if rush_label:
 		rush_label.text = "Rush" if rush_active else ""
+	_set_boss_health_visible(boss_round_active)
 
 	if match_timer_label:
-		var minutes := int(maxf(game_timer, 0.0)) / 60.0
-		var seconds := int(maxf(game_timer, 0.0)) % 60
-		match_timer_label.text = "Time: %d:%02d" % [minutes, seconds]
+		if boss_round_active:
+			match_timer_label.text = "Time: ∞"
+		else:
+			var minutes := int(maxf(game_timer, 0.0)) / 60.0
+			var seconds := int(maxf(game_timer, 0.0)) % 60
+			match_timer_label.text = "Time: %d:%02d" % [minutes, seconds]
 
 	_update_upgrade_buttons()
+
+func _set_boss_health_visible(visible: bool) -> void:
+	if boss_health_bar == null:
+		return
+	var boss_row := boss_health_bar.get_parent() as Control
+	if boss_row != null:
+		boss_row.visible = visible
 
 func _update_upgrade_buttons() -> void:
 	if swatter_entity == null:
@@ -823,7 +950,7 @@ func _update_upgrade_buttons() -> void:
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
 
 func _update_customer_spawns(delta: float) -> void:
-	if not day_active or customer_container == null:
+	if not day_active or boss_round_active or customer_container == null:
 		return
 	customer_spawn_timer -= delta
 	if customer_spawn_timer <= 0.0:
@@ -1134,6 +1261,25 @@ func _show_default_swatter() -> void:
 	swatter_sprite.frame = 0
 	swatter_attack_timer = 0.0
 	swatter_frame_timer = 0.0
+
+func _start_screen_shake(duration: float, strength: float) -> void:
+	screen_shake_duration = duration
+	screen_shake_timer = duration
+	screen_shake_strength = strength
+
+func _update_screen_shake(delta: float) -> void:
+	if screen_shake_timer <= 0.0:
+		position = base_scene_position
+		return
+
+	screen_shake_timer = maxf(screen_shake_timer - delta, 0.0)
+	var fade := screen_shake_timer / maxf(screen_shake_duration, 0.001)
+	position = base_scene_position + Vector2(
+		randf_range(-screen_shake_strength, screen_shake_strength) * fade,
+		randf_range(-screen_shake_strength, screen_shake_strength) * fade
+	)
+	if screen_shake_timer <= 0.0:
+		position = base_scene_position
 
 func _get_active_food_count(excluded_food: Node = null) -> int:
 	if food_container == null:

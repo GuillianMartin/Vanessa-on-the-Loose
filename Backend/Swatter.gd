@@ -105,6 +105,10 @@ func register_fly_kill() -> void:
 	current_combo = mini(current_combo + 1, MAX_COMBO)
 	combo_timer = COMBO_WINDOW
 
+func drain_energy_to_ratio(ratio: float) -> void:
+	energy = clampf(max_energy * ratio, 0.0, max_energy)
+	energy_changed.emit(energy, max_energy)
+
 func hit_customer() -> void:
 	energy = maxf(energy - CUSTOMER_HIT_COST, 0.0)
 	current_combo = 0 # Break combo streak on penalty

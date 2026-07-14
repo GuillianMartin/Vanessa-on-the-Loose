@@ -2,6 +2,8 @@ extends Area2D
 
 signal died(fly: Area2D)
 signal spawn_requested(position: Vector2, behavior_name: String)
+signal health_changed(lives_remaining: int, max_lives: int, health: int, max_health: int)
+signal shockwave_released(origin: Vector2)
 
 const BOSS_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/BossFly_Attritbutes.gd")
 
@@ -25,22 +27,21 @@ const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 72.0
 const BITE_DAMAGE := 12.0
 const BITE_INTERVAL := 0.65
-const BOSS_HEALTH_PER_BAR := 20
+const BOSS_HEALTH_PER_BAR := 10
 const BOSS_SPEED := 86.0
 const BOSS_IMAGE_SCALE := Vector2(0.72, 0.72)
 const BOSS_HITBOX_RADIUS := 86.0
-const BOSS_HEALTH_BAR_WIDTH := 170.0
-const BOSS_HEALTH_BAR_HEIGHT := 7.0
-const BOSS_HEALTH_BAR_Y := -132.0
+const BOSS_ROTATION_SPEED := 0.8
+const BOSS_LIVES := 5
+const BOSS_STUN_HITS_MIN := 5
+const BOSS_STUN_HITS_MAX := 10
 const KNOCKBACK_TIME := 0.2
 const KNOCKBACK_STRENGTH := 260.0
 const ATTACK_MIN_TIME := 3.8
 const ATTACK_MAX_TIME := 7.0
 const SHOCKWAVE_TRIGGER_FRAME := 5
 const POISON_TRIGGER_FRAME := 8
-const POISON_FOOD_DAMAGE_RATIO := 0.6
 const SHOCKWAVE_CUSTOMER_DAMAGE_RATIO := 0.35
-const SUMMON_COUNT := 5
 
 var boss_assets: Dictionary = {}
 var movement_bounds := Rect2(Vector2.ZERO, Vector2(1152, 648))
@@ -52,13 +53,17 @@ var eating_time := 0.0
 var knockback_timer := 0.0
 var attack_cooldown := 0.0
 
-var life_bar_count := 3
-var life_bar_count_was_forced := false
-var current_life_bar := 0
+var life_bar_count := BOSS_LIVES
 var current_health := BOSS_HEALTH_PER_BAR
 var is_dying := false
 var is_invulnerable := false
 var stun_timer := 0.0
+var pending_revive := false
+var boss_lives_remaining := BOSS_LIVES
+var stun_hits_required := BOSS_STUN_HITS_MIN
+var stun_hits_progress := 0
+var orbit_angle := 0.0
+var begin_with_summon := false
 
 var current_state := STATE_FLYING
 var sprite_frame_timer := 0.0
@@ -71,8 +76,6 @@ var shockwave_effect_playing := false
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
-var health_bar_container: VBoxContainer
-var health_bars: Array[ProgressBar] = []
 var poison_effect_sprite: Sprite2D
 var shockwave_effect_sprite: Sprite2D
 var sfx_swat: AudioStreamPlayer2D
@@ -88,45 +91,36 @@ func _ready() -> void:
 		sfx_swat = get_parent().get_parent().get_node_or_null("sfx_swat") as AudioStreamPlayer2D
 	_load_boss_assets()
 	_ensure_nodes()
-	if life_bar_count_was_forced:
-		_rebuild_health_bars()
-	else:
-		_roll_life_bars()
-	current_life_bar = life_bar_count - 1
 	current_health = BOSS_HEALTH_PER_BAR
 	attack_cooldown = randf_range(ATTACK_MIN_TIME, ATTACK_MAX_TIME)
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * BOSS_SPEED
-	_set_state(STATE_FLYING, true)
-	_update_health_bars()
+	stun_hits_required = randi_range(BOSS_STUN_HITS_MIN, BOSS_STUN_HITS_MAX)
+	stun_hits_progress = 0
+	boss_lives_remaining = life_bar_count
+	if begin_with_summon:
+		_set_state(STATE_SUMMON, true)
+	else:
+		_set_state(STATE_FLYING, true)
+	_emit_health_changed()
 
 func configure(bounds: Rect2, forced_life_bar_count: int = 0) -> void:
 	movement_bounds = bounds
-	if forced_life_bar_count > 0:
-		life_bar_count = clampi(forced_life_bar_count, 3, 6)
-		life_bar_count_was_forced = true
-		current_life_bar = life_bar_count - 1
-		current_health = BOSS_HEALTH_PER_BAR
-		if is_node_ready():
-			_rebuild_health_bars()
-			_update_health_bars()
+	life_bar_count = BOSS_LIVES if forced_life_bar_count <= 0 else maxi(forced_life_bar_count, 1)
+	current_health = BOSS_HEALTH_PER_BAR
+	boss_lives_remaining = life_bar_count
+	if is_node_ready():
+		_emit_health_changed()
+
+func begin_boss_fight() -> void:
+	begin_with_summon = true
+	if is_node_ready():
+		_set_state(STATE_SUMMON, true)
 
 func _load_boss_assets() -> void:
 	var boss_data := BOSS_ATTRIBUTES_SCRIPT.new().BossFlies
 	var boss_list: Array = boss_data.get("Boss", [])
 	if not boss_list.is_empty():
 		boss_assets = boss_list[0]
-
-func _roll_life_bars() -> void:
-	var roll := randf()
-	if roll < 0.4:
-		life_bar_count = 3
-	elif roll < 0.7:
-		life_bar_count = 4
-	elif roll < 0.9:
-		life_bar_count = 5
-	else:
-		life_bar_count = 6
-	_rebuild_health_bars()
 
 func _ensure_nodes() -> void:
 	sprite = get_node_or_null("Sprite2D") as Sprite2D
@@ -147,14 +141,6 @@ func _ensure_nodes() -> void:
 		circle = CircleShape2D.new()
 		collision_shape.shape = circle
 	circle.radius = BOSS_HITBOX_RADIUS
-
-	if health_bar_container == null:
-		health_bar_container = VBoxContainer.new()
-		health_bar_container.name = "LifeBars"
-		health_bar_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		health_bar_container.position = Vector2(-BOSS_HEALTH_BAR_WIDTH * 0.5, BOSS_HEALTH_BAR_Y)
-		health_bar_container.custom_minimum_size = Vector2(BOSS_HEALTH_BAR_WIDTH, BOSS_HEALTH_BAR_HEIGHT * 6.0)
-		add_child(health_bar_container)
 
 	if poison_effect_sprite == null:
 		poison_effect_sprite = _make_effect_sprite("PoisonEffect", "poison_effect")
@@ -178,30 +164,18 @@ func _make_effect_sprite(node_name: String, asset_key: String) -> Sprite2D:
 	_scale_effect_sprite(effect_sprite, BOSS_HITBOX_RADIUS * 3.0)
 	return effect_sprite
 
-func _rebuild_health_bars() -> void:
-	if health_bar_container == null:
-		return
-
-	for bar in health_bars:
-		if is_instance_valid(bar):
-			bar.queue_free()
-	health_bars.clear()
-
-	for _index in range(life_bar_count):
-		var bar := ProgressBar.new()
-		bar.show_percentage = false
-		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bar.custom_minimum_size = Vector2(BOSS_HEALTH_BAR_WIDTH, BOSS_HEALTH_BAR_HEIGHT)
-		bar.max_value = BOSS_HEALTH_PER_BAR
-		bar.value = BOSS_HEALTH_PER_BAR
-		health_bar_container.add_child(bar)
-		health_bars.append(bar)
-
 func _process(delta: float) -> void:
 	_update_effect_animations(delta)
 
 	if is_dying:
 		if _animate_state(delta, STATE_KILL, ATTACK_FRAME_TIME, false):
+			if pending_revive:
+				pending_revive = false
+				is_dying = false
+				_set_state(STATE_REVIVE, true)
+				return
+			is_dying = false
+			died.emit(self)
 			queue_free()
 		return
 
@@ -209,7 +183,9 @@ func _process(delta: float) -> void:
 		stun_timer -= delta
 		_animate_state(delta, STATE_STUN, ATTACK_FRAME_TIME, true)
 		if stun_timer <= 0.0:
-			_set_state(STATE_REVIVE, true)
+			is_invulnerable = false
+			input_pickable = true
+			_set_state(STATE_FLYING, true)
 		return
 
 	if current_state == STATE_REVIVE:
@@ -256,15 +232,18 @@ func _process_attack_state(delta: float) -> void:
 	var finished := _animate_state(delta, current_state, ATTACK_FRAME_TIME, false)
 	if current_state == STATE_SHOCKWAVE and not attack_effect_played and sprite.frame >= SHOCKWAVE_TRIGGER_FRAME:
 		attack_effect_played = true
+		_teleport_randomly()
 		_play_shockwave_effect()
+		_damage_foods(0.2)
 		_damage_customers()
+		_shockwave_swatter_energy()
+		shockwave_released.emit(global_position)
 	elif current_state == STATE_POISON and not attack_effect_played and sprite.frame >= POISON_TRIGGER_FRAME:
 		attack_effect_played = true
 		_play_poison_effect()
-		_damage_foods()
+		_apply_poison_to_foods()
 	elif current_state == STATE_SUMMON and not attack_effect_played and sprite.frame >= maxi(int(_get_frame_count(STATE_SUMMON) / 2), 0):
 		attack_effect_played = true
-		_summon_flies()
 
 	if finished:
 		attack_cooldown = randf_range(ATTACK_MIN_TIME, ATTACK_MAX_TIME)
@@ -276,11 +255,9 @@ func _process_attack_cooldown(delta: float) -> void:
 		return
 
 	var choices: Array[String] = []
-	if not get_tree().get_nodes_in_group("customers").is_empty():
-		choices.append(STATE_SHOCKWAVE)
+	choices.append(STATE_SHOCKWAVE)
 	if not get_tree().get_nodes_in_group("foods").is_empty():
 		choices.append(STATE_POISON)
-	choices.append(STATE_SUMMON)
 
 	attack_cooldown = randf_range(ATTACK_MIN_TIME, ATTACK_MAX_TIME)
 	if choices.is_empty() or randf() > 0.72:
@@ -289,8 +266,10 @@ func _process_attack_cooldown(delta: float) -> void:
 	_set_state(choices.pick_random(), true)
 
 func _animate_state(delta: float, state_name: String, frame_time: float, loop: bool) -> bool:
-	var frame_count := _get_frame_count(state_name)
-	if frame_count <= 1:
+	var frame_count: int = max(1, _get_frame_count(state_name))
+	var max_frame_index: int = max(0, frame_count - 1)
+	var texture_frame_count: int = max(1, int(sprite.hframes) * int(sprite.vframes))
+	if texture_frame_count <= 1:
 		return not loop
 
 	sprite_frame_timer += delta
@@ -298,15 +277,22 @@ func _animate_state(delta: float, state_name: String, frame_time: float, loop: b
 		return false
 
 	sprite_frame_timer = 0.0
+	var next_frame: int = int(sprite.frame) + 1
 	if loop:
-		sprite.frame = (sprite.frame + 1) % frame_count
-		return false
+		next_frame = next_frame % texture_frame_count
+		if next_frame < 0:
+			next_frame = 0
+	else:
+		if next_frame >= texture_frame_count:
+			sprite.frame = max_frame_index
+			return true
 
-	sprite.frame += 1
-	if sprite.frame >= frame_count:
-		sprite.frame = frame_count - 1
+	var clamped_frame: int = clampi(next_frame, 0, max_frame_index)
+	if clamped_frame < 0:
+		clamped_frame = 0
+	sprite.frame = clamped_frame
+	if not loop and int(sprite.frame) >= max_frame_index:
 		return true
-
 	return false
 
 func _set_state(state_name: String, force: bool = false) -> void:
@@ -315,9 +301,11 @@ func _set_state(state_name: String, force: bool = false) -> void:
 
 	current_state = state_name
 	sprite.texture = _get_texture(state_name)
-	sprite.hframes = _get_frame_count(state_name)
+	sprite.hframes = max(1, _get_frame_count(state_name))
 	sprite.vframes = 1
+	var frame_count: int = max(1, int(sprite.hframes) * int(sprite.vframes))
 	sprite.frame = 0
+	sprite.frame = clampi(int(sprite.frame), 0, max(0, frame_count - 1))
 	sprite_frame_timer = 0.0
 	attack_effect_played = false
 	_update_sprite_direction()
@@ -326,8 +314,11 @@ func _move_to_food(delta: float) -> void:
 	var to_food := target_food.global_position - global_position
 	var distance := to_food.length()
 	if distance > _get_eat_distance():
-		velocity = velocity.lerp(to_food.normalized() * BOSS_SPEED, 5.0 * delta)
+		var orbit_target := movement_bounds.get_center() + Vector2.RIGHT.rotated(orbit_angle) * minf(maxf(movement_bounds.size.x, movement_bounds.size.y) * 0.18, 180.0)
+		var steering := to_food.normalized() * BOSS_SPEED * 0.72 + (orbit_target - global_position).normalized() * BOSS_SPEED * 0.28
+		velocity = velocity.lerp(steering, 5.0 * delta)
 		position += velocity * delta
+		orbit_angle += delta * BOSS_ROTATION_SPEED
 		eating_time = 0.0
 		_update_sprite_direction()
 		_set_state(STATE_FLYING)
@@ -346,7 +337,11 @@ func _move_to_food(delta: float) -> void:
 		_leave_food()
 
 func _wander(delta: float) -> void:
+	var orbit_target := movement_bounds.get_center() + Vector2.RIGHT.rotated(orbit_angle) * minf(maxf(movement_bounds.size.x, movement_bounds.size.y) * 0.18, 180.0)
+	var steering := (orbit_target - global_position).normalized() * BOSS_SPEED
+	velocity = velocity.lerp(steering, 4.0 * delta)
 	position += velocity * delta
+	orbit_angle += delta * BOSS_ROTATION_SPEED
 	_update_sprite_direction()
 	_set_state(STATE_FLYING)
 
@@ -379,65 +374,71 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 			damage_amount = int(swatter.call("get_damage"))
 		take_damage(damage_amount)
 
-func take_damage(amount: int) -> void:
+func take_damage(_amount: int) -> void:
 	if is_invulnerable or is_dying:
 		return
 
-	current_health -= amount
+	current_health -= 1
+	stun_hits_progress += 1
+	if stun_hits_progress >= stun_hits_required and not is_invulnerable and not is_dying:
+		stun_hits_progress = 0
+		stun_hits_required = randi_range(BOSS_STUN_HITS_MIN, BOSS_STUN_HITS_MAX)
+		_enter_stun_state()
 	if sfx_swat != null:
 		sfx_swat.play()
-	_update_health_bars()
+	_emit_health_changed()
 
 	if current_health <= 0:
 		_deplete_life_bar()
 		return
 
-	_start_knockback()
+	if current_state != STATE_STUN:
+		_start_knockback()
 
 func _deplete_life_bar() -> void:
 	current_health = 0
-	_update_health_bars()
+	boss_lives_remaining -= 1
+	_emit_health_changed()
 
-	if current_life_bar <= 0:
-		died.emit(self)
-		_play_death_animation()
+	if boss_lives_remaining <= 0:
+		_play_death_animation(false)
 		return
 
-	current_life_bar -= 1
+	_play_death_animation(true)
+
+func _finish_revive() -> void:
+	current_health = BOSS_HEALTH_PER_BAR
+	is_invulnerable = false
+	input_pickable = true
+	stun_hits_progress = 0
+	stun_hits_required = randi_range(BOSS_STUN_HITS_MIN, BOSS_STUN_HITS_MAX)
+	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * BOSS_SPEED
+	if collision_shape != null:
+		collision_shape.disabled = false
+	_emit_health_changed()
+	_set_state(STATE_FLYING, true)
+
+func _play_death_animation(revive_after: bool) -> void:
+	is_dying = true
+	pending_revive = revive_after
+	is_invulnerable = true
+	input_pickable = false
+	velocity = Vector2.ZERO
+	if collision_shape != null:
+		collision_shape.disabled = true
+	_set_state(STATE_KILL, true)
+
+func _enter_stun_state() -> void:
+	if is_invulnerable or is_dying:
+		return
 	is_invulnerable = true
 	input_pickable = false
 	stun_timer = STUN_DURATION
 	velocity = Vector2.ZERO
 	_set_state(STATE_STUN, true)
 
-func _finish_revive() -> void:
-	current_health = BOSS_HEALTH_PER_BAR
-	is_invulnerable = false
-	input_pickable = true
-	_update_health_bars()
-	_set_state(STATE_FLYING, true)
-
-func _play_death_animation() -> void:
-	is_dying = true
-	is_invulnerable = true
-	input_pickable = false
-	velocity = Vector2.ZERO
-	if collision_shape != null:
-		collision_shape.disabled = true
-	if health_bar_container != null:
-		health_bar_container.visible = false
-	_set_state(STATE_KILL, true)
-
-func _update_health_bars() -> void:
-	for index in range(health_bars.size()):
-		var bar := health_bars[index]
-		bar.max_value = BOSS_HEALTH_PER_BAR
-		if index < current_life_bar:
-			bar.value = BOSS_HEALTH_PER_BAR
-		elif index == current_life_bar:
-			bar.value = clampi(current_health, 0, BOSS_HEALTH_PER_BAR)
-		else:
-			bar.value = 0
+func _emit_health_changed() -> void:
+	health_changed.emit(boss_lives_remaining, life_bar_count, clampi(current_health, 0, BOSS_HEALTH_PER_BAR), BOSS_HEALTH_PER_BAR)
 
 func _pick_food_target() -> Node2D:
 	var foods := get_tree().get_nodes_in_group("foods")
@@ -461,13 +462,19 @@ func _is_food_valid(food: Variant) -> bool:
 		return false
 	return (food as Node2D).is_inside_tree()
 
-func _damage_foods() -> void:
+func _apply_poison_to_foods() -> void:
+	for food in get_tree().get_nodes_in_group("foods"):
+		if not is_instance_valid(food) or not food.has_method("apply_poison_effect"):
+			continue
+		food.call("apply_poison_effect")
+
+func _damage_foods(percentage: float = 0.2) -> void:
 	for food in get_tree().get_nodes_in_group("foods"):
 		if not is_instance_valid(food) or not food.has_method("eat"):
 			continue
 		var max_freshness_value = food.get("max_freshness")
 		var max_freshness := float(max_freshness_value) if max_freshness_value != null else 100.0
-		food.call("eat", max_freshness * POISON_FOOD_DAMAGE_RATIO)
+		food.call("eat", max_freshness * percentage)
 
 func _damage_customers() -> void:
 	for customer in get_tree().get_nodes_in_group("customers"):
@@ -477,19 +484,17 @@ func _damage_customers() -> void:
 		var max_patience := float(max_patience_value) if max_patience_value != null else 100.0
 		customer.call("decrease_patience", max_patience * SHOCKWAVE_CUSTOMER_DAMAGE_RATIO)
 
-func _summon_flies() -> void:
-	for _index in range(SUMMON_COUNT):
-		spawn_requested.emit(global_position, "")
-
 func _play_poison_effect() -> void:
 	poison_effect_playing = true
 	poison_effect_timer = 0.0
+	_scale_effect_sprite(poison_effect_sprite, maxf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 1.5)
 	poison_effect_sprite.frame = 0
 	poison_effect_sprite.visible = true
 
 func _play_shockwave_effect() -> void:
 	shockwave_effect_playing = true
 	shockwave_effect_timer = 0.0
+	_scale_effect_sprite(shockwave_effect_sprite, maxf(get_viewport_rect().size.x, get_viewport_rect().size.y) * 1.5)
 	shockwave_effect_sprite.frame = 0
 	shockwave_effect_sprite.visible = true
 
@@ -538,6 +543,22 @@ func _start_knockback() -> void:
 
 	velocity = direction * KNOCKBACK_STRENGTH
 	_update_sprite_direction()
+
+func _teleport_randomly() -> void:
+	var margin := maxf(BOSS_HITBOX_RADIUS * 0.45, 80.0)
+	var min_x := movement_bounds.position.x + margin
+	var max_x := maxf(movement_bounds.end.x - margin, min_x)
+	var min_y := movement_bounds.position.y + margin
+	var max_y := maxf(movement_bounds.end.y - margin, min_y)
+	position = Vector2(randf_range(min_x, max_x), randf_range(min_y, max_y))
+	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * BOSS_SPEED
+	_update_sprite_direction()
+
+func _shockwave_swatter_energy() -> void:
+	var swatter := _get_swatter()
+	if swatter == null or not swatter.has_method("drain_energy_to_ratio"):
+		return
+	swatter.call("drain_energy_to_ratio", 0.5)
 
 func _leave_food() -> void:
 	eating_time = 0.0

@@ -8,6 +8,7 @@ const FOOD_SPOIL_TEXTURE := preload("res://assets/effects/food_spoil.png")
 
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
+const POISON_EFFECT_DURATION := 8.0
 
 const SPAWN_FRAME_COUNT := 8
 const SPAWN_DURATION := 0.6
@@ -133,6 +134,8 @@ var spoil_animation_sprite: Sprite2D
 var spoil_animation_timer := 0.0
 var is_spoiling := false
 var is_spoil_pending := false
+var poison_effect_timer := 0.0
+var egg_label: Label
 
 func _ready() -> void:
 	add_to_group("foods")
@@ -185,14 +188,29 @@ func eat(amount: float) -> int:
 func get_radius() -> float:
 	return radius
 
+func apply_poison_effect(duration: float = POISON_EFFECT_DURATION) -> void:
+	poison_effect_timer = maxf(poison_effect_timer, duration)
+	if egg_label != null:
+		egg_label.visible = true
+	_update_visuals()
+
 func _process(delta: float) -> void:
 	_update_spawn_animation(delta)
 	_update_spoil_animation(delta)
 	
+	if poison_effect_timer > 0.0:
+		poison_effect_timer = maxf(poison_effect_timer - delta, 0.0)
+		if poison_effect_timer <= 0.0 and egg_label != null:
+			egg_label.visible = false
+
 	if freshness <= 0.0:
 		return
 
-	freshness = maxf(freshness - spoil_rate * delta, 0.0)
+	var effective_spoil_rate := spoil_rate
+	if poison_effect_timer > 0.0:
+		effective_spoil_rate *= 0.7
+
+	freshness = maxf(freshness - effective_spoil_rate * delta, 0.0)
 	_animate_critical(delta)
 	_update_visuals()
 
@@ -282,6 +300,14 @@ func _ensure_nodes() -> void:
 		spoil_animation_sprite.visible = false
 		add_child(spoil_animation_sprite)
 
+	if egg_label == null:
+		egg_label = Label.new()
+		egg_label.text = "EGG"
+		egg_label.visible = false
+		egg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		egg_label.add_theme_font_size_override("font_size", 18)
+		add_child(egg_label)
+
 func _update_visuals() -> void:
 	if sprite == null or freshness_bar == null:
 		return
@@ -302,6 +328,10 @@ func _update_visuals() -> void:
 		price_label.position = Vector2(-50, radius + 16.0)
 		price_label.custom_minimum_size = Vector2(100, 20)
 		price_label.visible = not is_spawning and not is_spoiling and not is_spoil_pending
+
+	if egg_label != null:
+		egg_label.position = Vector2(-14, -radius - 8.0)
+		egg_label.visible = poison_effect_timer > 0.0
 
 func _get_sprite_scale_for_size(target_size: float) -> Vector2:
 	if sprite == null or sprite.texture == null:

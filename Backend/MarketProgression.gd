@@ -2,14 +2,14 @@ extends Node
 # MARKET PROGRESSION
 # Serves as game event attribute changer for loop progression
 
-const DAY_DURATION_SECONDS := 60
+const DAY_DURATION_SECONDS := 4
 const STARTING_MONEY := 500
 const STARTING_REPUTATION := 10
 const STARTING_SATISFACTION := 10
 
 # Function that serve as event picker
 static func get_market_event(day: int) -> Dictionary:
-	var events := [
+	var events: Array[Dictionary] = [
 		{
 			"name": "Filipino Vegetable Market",
 			"food_category": "Vegetable",
@@ -94,7 +94,7 @@ static func get_market_event(day: int) -> Dictionary:
 		},
 	]
 
-	var event_index := int((day - 1) / 5.0) % events.size()
+	var event_index: int = int((day - 1) / 5.0) % events.size()
 	return events[event_index] # Takes the event based on index value
 
 #Helper Functions
@@ -105,35 +105,35 @@ static func get_daily_price_roll() -> float:
 	return randf_range(0.9, 1.2)
 
 static func get_market_price_multiplier(day: int, daily_roll: float, event: Dictionary, category: String) -> float:
-	var day_inflation := 1.0 + (float(max(day - 1, 0)) * 0.025)
-	var category_modifiers := event.get("price_modifier", {}) as Dictionary
-	var category_modifier := float(category_modifiers.get(category, 1.0))
+	var day_inflation: float = 1.0 + (float(max(day - 1, 0)) * 0.025)
+	var category_modifiers: Dictionary = event.get("price_modifier", {}) as Dictionary
+	var category_modifier: float = float(category_modifiers.get(category, 1.0))
 	return day_inflation * daily_roll * category_modifier
 
 static func get_sell_price_multiplier(day: int, event: Dictionary, category: String) -> float:
-	var day_demand := 1.0 + (float(max(day - 1, 0)) * 0.022)
-	var category_modifiers := event.get("price_modifier", {}) as Dictionary
-	var category_modifier := float(category_modifiers.get(category, 1.0))
+	var day_demand: float = 1.0 + (float(max(day - 1, 0)) * 0.022)
+	var category_modifiers: Dictionary = event.get("price_modifier", {}) as Dictionary
+	var category_modifier: float = float(category_modifiers.get(category, 1.0))
 	return day_demand * category_modifier * float(event.get("customer_reward_multiplier", 1.0))
 
 static func get_food_spoil_multiplier(event: Dictionary) -> float:
 	return float(event.get("spoil_modifier", 1.0))
 
 static func get_fly_count(day: int, event: Dictionary) -> int:
-	var base_count := 10 + int(floor(float(max(day - 1, 0)) * 1.4))
+	var base_count: int = 10 + int(floor(float(max(day - 1, 0)) * 1.4))
 	return int(ceil(float(base_count) * float(event.get("fly_spawn_multiplier", 1.0))))
 
 static func get_customer_spawn_bounds(day: int, event: Dictionary, rush_active: bool) -> Vector2:
-	var spawn_multiplier := float(event.get("customer_spawn_multiplier", 1.0))
-	var day_speed := maxf(0.55, 1.0 - float(max(day - 1, 0)) * 0.018)
-	var rush_multiplier := 0.45 if rush_active else 1.0
+	var spawn_multiplier: float = float(event.get("customer_spawn_multiplier", 1.0))
+	var day_speed: float = maxf(0.55, 1.0 - float(max(day - 1, 0)) * 0.018)
+	var rush_multiplier: float = 0.45 if rush_active else 1.0
 	return Vector2(1.2, 3.2) * day_speed * rush_multiplier / maxf(spawn_multiplier, 0.1)
 
 static func get_customer_patience(initial_fly_count: int) -> float:
 	return 100.0 * (1.0 + float(max(initial_fly_count, 0)) * 0.035)
 
 static func should_start_rush(day: int) -> bool:
-	var chance := minf(0.16 + float(day) * 0.006, 0.35)
+	var chance: float = minf(0.16 + float(day) * 0.006, 0.35)
 	return randf() <= chance
 
 static func get_rush_duration(day: int) -> float:

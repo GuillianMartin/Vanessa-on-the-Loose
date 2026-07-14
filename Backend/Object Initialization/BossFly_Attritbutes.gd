@@ -16,13 +16,13 @@ var BossFlies := {
 			"flying": FlyAsset.new(load("res://assets/Flies/boss/boss_flying.png"), 5),
 			"eating": FlyAsset.new(load("res://assets/Flies/boss/boss_eating.png"), 12),
 			"poison": FlyAsset.new(load("res://assets/Flies/boss/boss_fly_poison.png"), 18),
+			"poison_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/poison_effect.png"), 9),
 			"shockwave": FlyAsset.new(load("res://assets/Flies/boss/boss_shockwave.png"), 22),
+			"shockwave_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/shockwave_effect.png"), 14),
 			"boss_kill": FlyAsset.new(load("res://assets/Flies/boss/boss_kill.png"), 11),
 			"boss_revive": FlyAsset.new(load("res://assets/Flies/boss/boss_revive.png"), 26),
 			"boss_stun": FlyAsset.new(load("res://assets/Flies/boss/boss_stun.png"), 6),
 			"boss_summon": FlyAsset.new(load("res://assets/Flies/boss/boss_summon.png"), 22),
-			"poison_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/poison_effect.png"), 9),
-			"shockwave_effect": FlyAsset.new(load("res://assets/Flies/boss/effects/shockwave_effect.png"), 14),
 			}
 		]
 }
