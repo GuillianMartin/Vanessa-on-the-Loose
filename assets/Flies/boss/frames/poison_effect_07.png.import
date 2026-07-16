@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0jbuw2d0yaul"
-path="res://.godot/imported/damage.png-2f742d1bb323ae1494ed85322455d753.ctex"
+uid="uid://dcm27u0ifji3g"
+path="res://.godot/imported/poison_effect_07.png-271a4ef9154c4727c347d8a7c70261c2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icon/damage.png"
-dest_files=["res://.godot/imported/damage.png-2f742d1bb323ae1494ed85322455d753.ctex"]
+source_file="res://assets/Flies/boss/frames/poison_effect_07.png"
+dest_files=["res://.godot/imported/poison_effect_07.png-271a4ef9154c4727c347d8a7c70261c2.ctex"]
 
 [params]
 

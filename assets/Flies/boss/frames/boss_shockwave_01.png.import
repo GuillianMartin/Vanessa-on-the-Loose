@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyg7dbdxd5ocx"
-path="res://.godot/imported/energy.png-7571c7c251822a30f59235bebbe44412.ctex"
+uid="uid://b8g71lprpoceu"
+path="res://.godot/imported/boss_shockwave_01.png-18d50dd347215ab50fba42dd897b5b5d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icon/energy.png"
-dest_files=["res://.godot/imported/energy.png-7571c7c251822a30f59235bebbe44412.ctex"]
+source_file="res://assets/Flies/boss/frames/boss_shockwave_01.png"
+dest_files=["res://.godot/imported/boss_shockwave_01.png-18d50dd347215ab50fba42dd897b5b5d.ctex"]
 
 [params]
 

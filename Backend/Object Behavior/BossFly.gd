@@ -6,6 +6,12 @@ signal health_changed(lives_remaining: int, max_lives: int, health: int, max_hea
 signal shockwave_released(origin: Vector2)
 
 const BOSS_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/BossFly_Attritbutes.gd")
+const FLY_SCRIPT := preload("res://Backend/Object Behavior/Fly.gd")
+const FLY_EGG_SCRIPT := preload("res://Backend/Object Initialization/FlyEgg.gd")
+const EGG_FOOD_GROUP := "fly_eggs"
+const BOSS_EGG_HEALTH := 6
+const BOSS_EGG_COUNT := 1
+const BOSS_EGG_PARENT_NAME := "Boss"
 
 const STATE_FLYING := "flying"
 const STATE_EATING := "eating"
@@ -26,22 +32,24 @@ const EFFECT_FRAME_TIME := 0.045
 const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 72.0
 const BITE_DAMAGE := 12.0
-const BITE_INTERVAL := 0.65
-const BOSS_HEALTH_PER_BAR := 10
-const BOSS_SPEED := 86.0
-const BOSS_IMAGE_SCALE := Vector2(0.72, 0.72)
-const BOSS_HITBOX_RADIUS := 86.0
+const BITE_INTERVAL := 0.45
+const BOSS_HEALTH_PER_BAR := 200
+const BOSS_SPEED := 2000.0
+const BOSS_IMAGE_SCALE := Vector2(1.2, 1.2)
+const BOSS_HITBOX_RADIUS := 96.0
 const BOSS_ROTATION_SPEED := 0.8
 const BOSS_LIVES := 5
-const BOSS_STUN_HITS_MIN := 5
-const BOSS_STUN_HITS_MAX := 10
-const KNOCKBACK_TIME := 0.2
-const KNOCKBACK_STRENGTH := 260.0
+const BOSS_STUN_HITS_MIN := 15
+const BOSS_STUN_HITS_MAX := 25
+const KNOCKBACK_TIME := 0.0
+const KNOCKBACK_STRENGTH := 0.0
 const ATTACK_MIN_TIME := 3.8
 const ATTACK_MAX_TIME := 7.0
 const SHOCKWAVE_TRIGGER_FRAME := 5
 const POISON_TRIGGER_FRAME := 8
 const SHOCKWAVE_CUSTOMER_DAMAGE_RATIO := 0.35
+const POISON_ATTACK_CHANCE := 0.80
+const SHOCKWAVE_ATTACK_CHANCE := 0.90
 
 var boss_assets: Dictionary = {}
 var movement_bounds := Rect2(Vector2.ZERO, Vector2(1152, 648))
@@ -255,8 +263,9 @@ func _process_attack_cooldown(delta: float) -> void:
 		return
 
 	var choices: Array[String] = []
-	choices.append(STATE_SHOCKWAVE)
-	if not get_tree().get_nodes_in_group("foods").is_empty():
+	if randf() <= SHOCKWAVE_ATTACK_CHANCE:
+		choices.append(STATE_SHOCKWAVE)
+	if not get_tree().get_nodes_in_group("foods").is_empty() and randf() <= POISON_ATTACK_CHANCE:
 		choices.append(STATE_POISON)
 
 	attack_cooldown = randf_range(ATTACK_MIN_TIME, ATTACK_MAX_TIME)
@@ -332,6 +341,7 @@ func _move_to_food(delta: float) -> void:
 		bite_timer = BITE_INTERVAL
 		if target_food.has_method("eat"):
 			target_food.call("eat", BITE_DAMAGE)
+			_try_lay_eggs_on_food()
 
 	if eating_time >= 2.0:
 		_leave_food()
@@ -359,6 +369,35 @@ func _keep_inside_bounds() -> void:
 		velocity.y *= -1.0
 		position.y = clampf(position.y, min_y, max_y)
 
+func _try_lay_eggs_on_food() -> void:
+	if not _is_food_valid(target_food):
+		return
+
+	var max_eggs := BOSS_EGG_COUNT
+	var current_eggs := _get_food_egg_count(target_food)
+	if current_eggs >= max_eggs:
+		return
+
+	var eggs_to_lay := max_eggs - current_eggs
+	var hatch_options := FLY_SCRIPT.get_hatch_options_for_parent(BOSS_EGG_PARENT_NAME)
+	for _index in range(eggs_to_lay):
+		var egg := FLY_EGG_SCRIPT.new() as Area2D
+		egg.call("configure", BOSS_EGG_HEALTH, hatch_options, target_food)
+		egg.add_to_group(EGG_FOOD_GROUP)
+		target_food.add_child(egg)
+		var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(10.0, 30.0)
+		egg.global_position = target_food.global_position + offset
+		var game_root := get_tree().current_scene
+		if game_root != null and game_root.has_method("_on_fly_spawn_requested"):
+			egg.connect("hatched", Callable(game_root, "_on_fly_spawn_requested"))
+
+func _get_food_egg_count(food: Node2D) -> int:
+	var count := 0
+	for child in food.get_children():
+		if child.is_in_group(EGG_FOOD_GROUP):
+			count += 1
+	return count
+
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
 	if is_invulnerable or is_dying:
 		return
@@ -378,7 +417,7 @@ func take_damage(_amount: int) -> void:
 	if is_invulnerable or is_dying:
 		return
 
-	current_health -= 1
+	current_health -= _amount
 	stun_hits_progress += 1
 	if stun_hits_progress >= stun_hits_required and not is_invulnerable and not is_dying:
 		stun_hits_progress = 0

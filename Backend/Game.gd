@@ -12,10 +12,10 @@ const REWARD_MANAGER := preload("res://Backend/RewardManager.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 
-const BASE_FOOD_COUNT := 5
+const BASE_FOOD_COUNT := 8
 const TOP_SAFE_AREA := 72.0
 const EDGE_PADDING := 30.0
-const FOOD_GAP := 5.0
+const FOOD_GAP := 1.0
 const FOOD_PLACEMENT_ATTEMPTS := 500
 const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
@@ -23,6 +23,12 @@ const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
 const MAX_DEBT_LIMIT: int = -500
 const MAX_BANKRUPTCY_STRIKES: int = 3
+
+var icon_paths := {
+	"damage": "res://assets/icon/Upgrades/damage.png",
+	"speed": "res://assets/icon/Upgrades/speed.png",
+	"energy": "res://assets/icon/Upgrades/energy.png",
+}
 
 var game_timer := 0.0
 var market_day := 1
@@ -83,6 +89,7 @@ var menu_layer: CanvasLayer
 var day_label: Label
 var market_label: Label
 var flies_label: Label
+var swatted_label: Label
 var money_label: Label
 var reputation_label: Label
 var satisfaction_label: Label
@@ -257,6 +264,9 @@ func _build_hud() -> void:
 	flies_label = _make_hud_label("Flies: 0", 76)
 	row.add_child(flies_label)
 
+	swatted_label = _make_hud_label("Swatted: 0", 96)
+	row.add_child(swatted_label)
+
 	match_timer_label = _make_hud_label("Time: 5:00", 92)
 	row.add_child(match_timer_label)
 
@@ -338,8 +348,11 @@ func _build_upgrade_panel() -> void:
 
 	for upgrade_name in ["damage", "speed", "energy"]:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(96, 34)
+		button.custom_minimum_size = Vector2(96, 72)
 		button.pressed.connect(_on_upgrade_pressed.bind(upgrade_name))
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(button)
 		upgrade_buttons[upgrade_name] = button
 
@@ -889,7 +902,9 @@ func _on_boss_shockwave_released(_origin: Vector2) -> void:
 	_start_screen_shake(0.45, 10.0)
 
 func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = "") -> void:
-	if not day_active or boss_round_active:
+	if not day_active:
+		return
+	if boss_round_active and behavior_name == "":
 		return
 	var bounds := _get_fly_bounds()
 	var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(70.0, 120.0)
@@ -904,6 +919,8 @@ func _update_hud() -> void:
 		market_label.text = "Boss Fight" if boss_round_active else str(active_market_event.get("name", "Market"))
 	if flies_label:
 		flies_label.text = "Boss" if boss_round_active else "Flies: %d" % flies_left
+	if swatted_label:
+		swatted_label.text = "Swatted: %d" % day_flies_killed
 	if money_label:
 		money_label.text = "Money: ₱%d" % current_money
 	if reputation_label:
@@ -938,15 +955,12 @@ func _update_upgrade_buttons() -> void:
 	if upgrade_label:
 		upgrade_label.text = "Upgrades"
 
-	var display_names := {
-		"damage": "Damage",
-		"speed": "Speed",
-		"energy": "Energy",
-	}
 	for upgrade_name in upgrade_buttons.keys():
 		var button := upgrade_buttons[upgrade_name] as Button
 		var cost := int(swatter_entity.call("get_upgrade_cost", upgrade_name))
-		button.text = "%s\n₱%d" % [display_names[upgrade_name], cost]
+		var icon_texture := load(icon_paths[upgrade_name]) as Texture2D
+		button.icon = icon_texture
+		button.text = "₱%d" % cost
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
 
 func _update_customer_spawns(delta: float) -> void:

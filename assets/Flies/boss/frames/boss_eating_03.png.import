@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di6rupsrxwyhy"
-path="res://.godot/imported/speed.png-cdaba98f93cb8f0f848cbc78cf0d6967.ctex"
+uid="uid://dvxf7i5df018s"
+path="res://.godot/imported/boss_eating_03.png-427ab1feb8f40d27e0162f94d2f76da6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icon/speed.png"
-dest_files=["res://.godot/imported/speed.png-cdaba98f93cb8f0f848cbc78cf0d6967.ctex"]
+source_file="res://assets/Flies/boss/frames/boss_eating_03.png"
+dest_files=["res://.godot/imported/boss_eating_03.png-427ab1feb8f40d27e0162f94d2f76da6.ctex"]
 
 [params]
 
