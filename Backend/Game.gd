@@ -830,6 +830,7 @@ func _show_day_end_summary_screen(completed_market_day: int) -> void:
 	financial_button.visible = true
 	financial_button.disabled = false
 	result_start_button.visible = false
+	_play_result_container_entrance()
 	play_button.text = "Next: Financial Forecast"
 
 func _show_pre_day_forecast_screen(animate_intro := false) -> void:
@@ -923,6 +924,14 @@ func _animate_result_data_in() -> void:
 	fade_in.tween_property(result_motion_root, "position", Vector2.ZERO, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	fade_in.tween_property(result_motion_root, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await fade_in.finished
+
+func _play_result_container_entrance() -> void:
+	if not result_board:
+		return
+	result_board.scale = Vector2(1.65, 1.65)
+	var entrance_tween := create_tween()
+	entrance_tween.tween_property(result_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	entrance_tween.tween_property(result_board, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _play_start_day_button_animation() -> void:
 	result_transition_active = true
