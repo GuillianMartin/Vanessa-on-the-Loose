@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dgpscocihbfeo" path="res://Backend/Game.gd" id="1_qn0m5"]
 [ext_resource type="Texture2D" uid="uid://bxg2q277syp7s" path="res://assets/background/Scene1/vegetable_background_day.png" id="3_0r3yc"]
-[ext_resource type="Script" uid="uid://d3t4vdpevsgtp" path="res://Backend/Object Behavior/container.gd" id="3_cf3yn"]
+[ext_resource type="Script" uid="uid://dtcottmcutgxb" path="res://Backend/Object Behavior/container.gd" id="3_cf3yn"]
 [ext_resource type="Texture2D" uid="uid://d3c087oqk2oc1" path="res://assets/background/Scene1/container.png" id="3_hby63"]
 [ext_resource type="AudioStream" uid="uid://d14x4vas85qj8" path="res://assets/Sound Effects/Slap.mp3" id="3_qn0m5"]
 [ext_resource type="Texture2D" uid="uid://ca0fuutgxoj7h" path="res://assets/background/Scene2/background_fruit.png" id="4_dwilc"]
@@ -93,7 +93,7 @@ texture = ExtResource("7_fvrtb")
 
 [node name="ContainerNight" type="Sprite2D" parent="Container" unique_id=1070993606]
 texture_filter = 1
-position = Vector2(-9.74723, -7.4615517)
+position = Vector2(-13.496159, -101.748276)
 scale = Vector2(1.6169411, 1.647004)
 texture = ExtResource("10_j6kdu")
 

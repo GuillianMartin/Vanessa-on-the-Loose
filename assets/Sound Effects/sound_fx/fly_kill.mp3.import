@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bmtcci1do1eao"
+path="res://.godot/imported/fly_kill.mp3-2d4f0d50e362e3b578c8be3b903758ef.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/sound_fx/fly_kill.mp3"
+dest_files=["res://.godot/imported/fly_kill.mp3-2d4f0d50e362e3b578c8be3b903758ef.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

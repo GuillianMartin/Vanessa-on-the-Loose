@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cu5ueu7txyntb"
+path="res://.godot/imported/spoil.mp3-806a6edfba84a80a5df5816f30de1cdd.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/sound_fx/spoil.mp3"
+dest_files=["res://.godot/imported/spoil.mp3-806a6edfba84a80a5df5816f30de1cdd.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
