@@ -111,6 +111,7 @@ var upgrade_label: Label
 var upgrade_buttons := {}
 var default_menu_panel: PanelContainer
 var result_art_root: Control
+var result_board: Control
 var result_texture_rect: TextureRect
 var result_motion_root: Control
 var result_content: VBoxContainer
@@ -448,7 +449,10 @@ func _build_result_art_menu() -> void:
 	result_art_root.add_child(center)
 
 	var board := Control.new()
+	result_board = board
 	board.custom_minimum_size = RESULT_FRAME_SIZE
+	board.size = RESULT_FRAME_SIZE
+	board.pivot_offset = RESULT_FRAME_SIZE * 0.5
 	center.add_child(board)
 
 	result_texture_rect = TextureRect.new()
@@ -515,6 +519,7 @@ func _build_result_art_menu() -> void:
 	financial_button.ignore_texture_size = true
 	financial_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
 	financial_button.size = RESULT_BUTTON_FRAME_SIZE
+	financial_button.pivot_offset = RESULT_BUTTON_FRAME_SIZE * 0.5
 	financial_button.pressed.connect(_on_menu_button_pressed)
 	board.add_child(financial_button)
 
@@ -526,6 +531,7 @@ func _build_result_art_menu() -> void:
 	result_start_button.ignore_texture_size = true
 	result_start_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
 	result_start_button.size = RESULT_BUTTON_FRAME_SIZE
+	result_start_button.pivot_offset = RESULT_BUTTON_FRAME_SIZE * 0.5
 	result_start_button.pressed.connect(_on_menu_button_pressed)
 	result_start_button.visible = false
 	board.add_child(result_start_button)
@@ -554,6 +560,8 @@ func _show_result_art_panel() -> void:
 		default_menu_panel.visible = false
 	if result_art_root:
 		result_art_root.visible = true
+	if result_board:
+		result_board.scale = Vector2.ONE
 	if result_texture_rect:
 		result_texture_rect.texture = RESULT_CONTAINER_TEXTURE
 	if result_motion_root:
@@ -590,7 +598,7 @@ func _on_menu_button_pressed() -> void:
 		"day_end_summary":
 			_play_forecast_transition()
 		"pre_day_forecast":
-			_start_day()
+			_play_start_day_button_animation()
 		"start", "game_over":
 			_start_new_run()
 		_:
@@ -885,6 +893,7 @@ func _play_forecast_transition() -> void:
 	result_transition_active = true
 	if financial_button:
 		financial_button.disabled = true
+		await _play_bouncy_pop(financial_button)
 	if result_start_button:
 		result_start_button.visible = false
 
@@ -914,6 +923,25 @@ func _animate_result_data_in() -> void:
 	fade_in.tween_property(result_motion_root, "position", Vector2.ZERO, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	fade_in.tween_property(result_motion_root, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await fade_in.finished
+
+func _play_start_day_button_animation() -> void:
+	result_transition_active = true
+	if result_start_button:
+		result_start_button.disabled = true
+	if result_board:
+		await _play_bouncy_pop(result_board)
+	if result_start_button:
+		result_start_button.disabled = false
+	result_transition_active = false
+	_start_day()
+
+func _play_bouncy_pop(target: Control) -> void:
+	target.scale = Vector2.ONE
+	var pop_tween := create_tween()
+	pop_tween.tween_property(target, "scale", Vector2(1.08, 1.08), 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(target, "scale", Vector2(0.86, 0.86), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	pop_tween.tween_property(target, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await pop_tween.finished
 
 func _format_peso(amount: int) -> String:
 	return "₱%d" % amount
