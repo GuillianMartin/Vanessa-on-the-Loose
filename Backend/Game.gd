@@ -11,6 +11,10 @@ const MARKET_PROGRESSION := preload("res://Backend/MarketProgression.gd")
 const REWARD_MANAGER := preload("res://Backend/RewardManager.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
+const RESULT_CONTAINER_TEXTURE := preload("res://assets/ui_container/result_container.png")
+const RESULT_FLIP_TEXTURE := preload("res://assets/ui_container/result_flip.png")
+const FINANCIAL_BUTTON_TEXTURE := preload("res://assets/buttons/financial_button.png")
+const START_BUTTON_TEXTURE := preload("res://assets/buttons/start_button.png")
 
 const BASE_FOOD_COUNT := 8
 const TOP_SAFE_AREA := 72.0
@@ -23,6 +27,14 @@ const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
 const MAX_DEBT_LIMIT: int = -500
 const MAX_BANKRUPTCY_STRIKES: int = 3
+const RESULT_FRAME_SIZE := Vector2(723, 483)
+const RESULT_FLIP_FRAME_COUNT := 17
+const RESULT_FLIP_FPS := 15.0
+const RESULT_BUTTON_FRAME_SIZE := Vector2(330, 70)
+const RESULT_TEXT_AREA_POSITION := Vector2(182, 62)
+const RESULT_TEXT_AREA_SIZE := Vector2(477, 294)
+const RESULT_BUTTON_POSITION := Vector2(275, 390)
+const RESULT_TEXT_COLOR := Color("#5D371E")
 
 var icon_paths := {
 	"damage": "res://assets/icon/Upgrades/damage.png",
@@ -97,6 +109,17 @@ var match_timer_label: Label
 var rush_label: Label
 var upgrade_label: Label
 var upgrade_buttons := {}
+var default_menu_panel: PanelContainer
+var result_art_root: Control
+var result_texture_rect: TextureRect
+var result_motion_root: Control
+var result_content: VBoxContainer
+var result_title_label: Label
+var result_body_label: Label
+var result_warning_label: Label
+var financial_button: TextureButton
+var result_start_button: TextureButton
+var result_transition_active := false
 var menu_title: Label
 var result_label: Label
 var forecast_warning_label: Label
@@ -371,6 +394,7 @@ func _build_menu() -> void:
 	menu_layer.add_child(center)
 
 	var panel := PanelContainer.new()
+	default_menu_panel = panel
 	panel.custom_minimum_size = Vector2(560, 430)
 	center.add_child(panel)
 
@@ -411,6 +435,131 @@ func _build_menu() -> void:
 	play_button.pressed.connect(_on_menu_button_pressed)
 	content.add_child(play_button)
 
+	_build_result_art_menu()
+
+func _build_result_art_menu() -> void:
+	result_art_root = Control.new()
+	result_art_root.visible = false
+	result_art_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu_layer.add_child(result_art_root)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	result_art_root.add_child(center)
+
+	var board := Control.new()
+	board.custom_minimum_size = RESULT_FRAME_SIZE
+	center.add_child(board)
+
+	result_texture_rect = TextureRect.new()
+	result_texture_rect.texture = RESULT_CONTAINER_TEXTURE
+	result_texture_rect.custom_minimum_size = RESULT_FRAME_SIZE
+	result_texture_rect.size = RESULT_FRAME_SIZE
+	result_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	board.add_child(result_texture_rect)
+
+	result_motion_root = Control.new()
+	result_motion_root.position = Vector2.ZERO
+	result_motion_root.size = RESULT_FRAME_SIZE
+	result_motion_root.clip_contents = true
+	board.add_child(result_motion_root)
+
+	var text_margin := MarginContainer.new()
+	text_margin.position = RESULT_TEXT_AREA_POSITION
+	text_margin.size = RESULT_TEXT_AREA_SIZE
+	text_margin.clip_contents = true
+	text_margin.add_theme_constant_override("margin_left", 0)
+	text_margin.add_theme_constant_override("margin_right", 0)
+	text_margin.add_theme_constant_override("margin_top", 0)
+	text_margin.add_theme_constant_override("margin_bottom", 0)
+	result_motion_root.add_child(text_margin)
+
+	var content := VBoxContainer.new()
+	result_content = content
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 6)
+	text_margin.add_child(content)
+
+	result_title_label = Label.new()
+	result_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_title_label.add_theme_color_override("font_color", RESULT_TEXT_COLOR)
+	result_title_label.add_theme_font_size_override("font_size", 20)
+	content.add_child(result_title_label)
+
+	result_body_label = Label.new()
+	result_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	result_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_body_label.add_theme_color_override("font_color", RESULT_TEXT_COLOR)
+	result_body_label.add_theme_font_size_override("font_size", 18)
+	result_body_label.custom_minimum_size = Vector2(RESULT_TEXT_AREA_SIZE.x, 0)
+	content.add_child(result_body_label)
+
+	result_warning_label = Label.new()
+	result_warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_warning_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_warning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_warning_label.add_theme_color_override("font_color", RESULT_TEXT_COLOR)
+	result_warning_label.add_theme_font_size_override("font_size", 18)
+	result_warning_label.custom_minimum_size = Vector2(RESULT_TEXT_AREA_SIZE.x, 0)
+	result_warning_label.visible = false
+	content.add_child(result_warning_label)
+
+	financial_button = TextureButton.new()
+	financial_button.position = RESULT_BUTTON_POSITION
+	financial_button.texture_normal = _get_button_frame(FINANCIAL_BUTTON_TEXTURE, 0)
+	financial_button.texture_hover = _get_button_frame(FINANCIAL_BUTTON_TEXTURE, 1)
+	financial_button.texture_pressed = _get_button_frame(FINANCIAL_BUTTON_TEXTURE, 1)
+	financial_button.ignore_texture_size = true
+	financial_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
+	financial_button.size = RESULT_BUTTON_FRAME_SIZE
+	financial_button.pressed.connect(_on_menu_button_pressed)
+	board.add_child(financial_button)
+
+	result_start_button = TextureButton.new()
+	result_start_button.position = RESULT_BUTTON_POSITION
+	result_start_button.texture_normal = _get_button_frame(START_BUTTON_TEXTURE, 0)
+	result_start_button.texture_hover = _get_button_frame(START_BUTTON_TEXTURE, 1)
+	result_start_button.texture_pressed = _get_button_frame(START_BUTTON_TEXTURE, 1)
+	result_start_button.ignore_texture_size = true
+	result_start_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
+	result_start_button.size = RESULT_BUTTON_FRAME_SIZE
+	result_start_button.pressed.connect(_on_menu_button_pressed)
+	result_start_button.visible = false
+	board.add_child(result_start_button)
+
+func _get_button_frame(atlas: Texture2D, frame_index: int) -> AtlasTexture:
+	var texture := AtlasTexture.new()
+	texture.atlas = atlas
+	texture.region = Rect2(RESULT_BUTTON_FRAME_SIZE.x * frame_index, 0, RESULT_BUTTON_FRAME_SIZE.x, RESULT_BUTTON_FRAME_SIZE.y)
+	return texture
+
+func _get_result_flip_frame(frame_index: int) -> AtlasTexture:
+	var texture := AtlasTexture.new()
+	texture.atlas = RESULT_FLIP_TEXTURE
+	texture.region = Rect2(RESULT_FRAME_SIZE.x * frame_index, 0, RESULT_FRAME_SIZE.x, RESULT_FRAME_SIZE.y)
+	return texture
+
+func _show_default_menu_panel() -> void:
+	if default_menu_panel:
+		default_menu_panel.visible = true
+	if result_art_root:
+		result_art_root.visible = false
+	result_transition_active = false
+
+func _show_result_art_panel() -> void:
+	if default_menu_panel:
+		default_menu_panel.visible = false
+	if result_art_root:
+		result_art_root.visible = true
+	if result_texture_rect:
+		result_texture_rect.texture = RESULT_CONTAINER_TEXTURE
+	if result_motion_root:
+		result_motion_root.position = Vector2.ZERO
+		result_motion_root.modulate.a = 1.0
+
 func _show_start_menu() -> void:
 	menu_state = "start"
 	day_active = false
@@ -426,6 +575,7 @@ func _show_start_menu() -> void:
 	_clear_flies()
 	_clear_food()
 	_clear_customers()
+	_show_default_menu_panel()
 	menu_title.text = "Bangaw Fly Market"
 	result_label.text = "Run a stall, protect the food, earn profit, and survive as many market days as possible."
 	if forecast_warning_label:
@@ -433,9 +583,12 @@ func _show_start_menu() -> void:
 	play_button.text = "Start Market"
 
 func _on_menu_button_pressed() -> void:
+	if result_transition_active:
+		return
+
 	match menu_state:
 		"day_end_summary":
-			_show_pre_day_forecast_screen()
+			_play_forecast_transition()
 		"pre_day_forecast":
 			_start_day()
 		"start", "game_over":
@@ -595,6 +748,7 @@ func _show_game_over(reason: String) -> void:
 	menu_state = "game_over"
 	menu_layer.visible = true
 	hud_layer.visible = false
+	_show_default_menu_panel()
 	if forecast_warning_label:
 		forecast_warning_label.visible = false
 	menu_title.text = "Game Over"
@@ -647,11 +801,12 @@ func _show_day_end_summary_screen(completed_market_day: int) -> void:
 	menu_state = "day_end_summary"
 	menu_layer.visible = true
 	hud_layer.visible = false
+	_show_result_art_panel()
 	if forecast_warning_label:
 		forecast_warning_label.visible = false
 
-	menu_title.text = "Day %d Complete" % completed_market_day
-	result_label.text = "--- TODAY'S PERFORMANCE ---\nCustomers Served: %d\nMarket Reputation: %d (%+d)\nFlies Swatted: %d\n\n--- FINANCIALS ---\nGross Sales: +%s\nLeftover Stock Sold: +%s\nFly Bounty: +%s\n(Minus) Stock Costs: -%s\nTotal End of Day Wallet: %s" % [
+	result_title_label.text = "Day %d Complete" % completed_market_day
+	result_body_label.text = "--- TODAY'S PERFORMANCE ---\nCustomers Served: %d\nMarket Reputation: %d (%+d)\nFlies Swatted: %d\n\n--- FINANCIALS ---\nGross Sales: +%s\nLeftover Stock Sold: +%s\nFly Bounty: +%s\n(Minus) Stock Costs: -%s\nTotal End of Day Wallet: %s" % [
 		_report_int(current_day_report, "customers_served"),
 		_report_int(current_day_report, "market_reputation"),
 		_report_int(current_day_report, "market_reputation_change"),
@@ -662,22 +817,28 @@ func _show_day_end_summary_screen(completed_market_day: int) -> void:
 		_format_peso(_report_int(current_day_report, "stock_costs")),
 		_format_peso(_report_int(current_day_report, "total_wallet_end_of_day")),
 	]
+	result_warning_label.visible = false
+	_apply_result_text_fit(result_body_label.text, false)
+	financial_button.visible = true
+	financial_button.disabled = false
+	result_start_button.visible = false
 	play_button.text = "Next: Financial Forecast"
 
-func _show_pre_day_forecast_screen() -> void:
+func _show_pre_day_forecast_screen(animate_intro := false) -> void:
 	menu_state = "pre_day_forecast"
 	menu_layer.visible = true
 	hud_layer.visible = false
+	_show_result_art_panel()
 
-	menu_title.text = "Day %d Forecast" % market_day
-	result_label.text = "--- TOMORROW'S FORECAST ---\nCarried Over Wallet: %s\nExpected Restock Cost: -%s\nStarting Capital for Tomorrow: %s" % [
+	result_title_label.text = "Day %d Forecast" % market_day
+	result_body_label.text = "--- TOMORROW'S FORECAST ---\nCarried Over Wallet: %s\nExpected Restock Cost: -%s\nStarting Capital for Tomorrow: %s" % [
 		_format_peso(_report_int(next_day_forecast, "carried_over_wallet")),
 		_format_peso(_report_int(next_day_forecast, "expected_restock_cost")),
 		_format_peso(_report_int(next_day_forecast, "final_starting_capital")),
 	]
 
 	if forecast_warning_label:
-		forecast_warning_label.visible = true
+		forecast_warning_label.visible = false
 		if bool(next_day_forecast.get("is_bankruptcy_state", false)):
 			var strike_count := int(next_day_forecast.get("bankruptcy_strikes", bankruptcy_strikes))
 			forecast_warning_label.text = "⚠️ WARNING: BANKRUPTCY IMMINENT! (Strike %d of %d)" % [strike_count, MAX_BANKRUPTCY_STRIKES]
@@ -687,6 +848,72 @@ func _show_pre_day_forecast_screen() -> void:
 			forecast_warning_label.add_theme_color_override("font_color", Color(0.18, 0.72, 0.30))
 
 	play_button.text = "Start Day %d" % market_day
+	if bool(next_day_forecast.get("is_bankruptcy_state", false)):
+		var strike_count := int(next_day_forecast.get("bankruptcy_strikes", bankruptcy_strikes))
+		result_warning_label.text = "WARNING: BANKRUPTCY IMMINENT! (Strike %d of %d)" % [strike_count, MAX_BANKRUPTCY_STRIKES]
+	else:
+		result_warning_label.text = "Finances Stable"
+	result_warning_label.add_theme_color_override("font_color", RESULT_TEXT_COLOR)
+	result_warning_label.visible = true
+	_apply_result_text_fit(result_body_label.text, true)
+	financial_button.visible = false
+	result_start_button.visible = true
+	if animate_intro:
+		_animate_result_data_in()
+
+func _apply_result_text_fit(body_text: String, has_warning: bool) -> void:
+	var body_lines := body_text.count("\n") + 1
+	var total_lines := body_lines + 1 + (1 if has_warning else 0)
+	var body_font_size := 18
+	if total_lines >= 12:
+		body_font_size = 15
+	elif total_lines >= 9:
+		body_font_size = 16
+	elif total_lines >= 6:
+		body_font_size = 18
+	else:
+		body_font_size = 20
+
+	var title_font_size := mini(body_font_size + 2, 20)
+	var separation := 5 if total_lines >= 9 else 8
+	result_content.add_theme_constant_override("separation", separation)
+	result_title_label.add_theme_font_size_override("font_size", title_font_size)
+	result_body_label.add_theme_font_size_override("font_size", body_font_size)
+	result_warning_label.add_theme_font_size_override("font_size", body_font_size)
+
+func _play_forecast_transition() -> void:
+	result_transition_active = true
+	if financial_button:
+		financial_button.disabled = true
+	if result_start_button:
+		result_start_button.visible = false
+
+	var fade_out := create_tween()
+	fade_out.set_parallel(true)
+	fade_out.tween_property(result_motion_root, "position", Vector2(0, -28), 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	fade_out.tween_property(result_motion_root, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await fade_out.finished
+
+	if financial_button:
+		financial_button.visible = false
+
+	for frame_index in range(RESULT_FLIP_FRAME_COUNT):
+		result_texture_rect.texture = _get_result_flip_frame(frame_index)
+		await get_tree().create_timer(1.0 / RESULT_FLIP_FPS).timeout
+
+	result_texture_rect.texture = RESULT_CONTAINER_TEXTURE
+	_show_pre_day_forecast_screen(false)
+	await _animate_result_data_in()
+	result_transition_active = false
+
+func _animate_result_data_in() -> void:
+	result_motion_root.position = Vector2(0, 28)
+	result_motion_root.modulate.a = 0.0
+	var fade_in := create_tween()
+	fade_in.set_parallel(true)
+	fade_in.tween_property(result_motion_root, "position", Vector2.ZERO, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	fade_in.tween_property(result_motion_root, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await fade_in.finished
 
 func _format_peso(amount: int) -> String:
 	return "₱%d" % amount

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bjy6b70etpe5r"
+path="res://.godot/imported/default_fly.mp3-69ba2228f18aa3c9aeb46e4e120e8431.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/fly_sound/default_fly.mp3"
+dest_files=["res://.godot/imported/default_fly.mp3-69ba2228f18aa3c9aeb46e4e120e8431.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
