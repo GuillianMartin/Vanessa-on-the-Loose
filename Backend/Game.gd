@@ -17,6 +17,11 @@ const RESULT_CONTAINER_TEXTURE := preload("res://assets/ui_container/result_cont
 const RESULT_FLIP_TEXTURE := preload("res://assets/ui_container/result_flip.png")
 const FINANCIAL_BUTTON_TEXTURE := preload("res://assets/buttons/financial_button.png")
 const START_BUTTON_TEXTURE := preload("res://assets/buttons/start_button.png")
+const GAME_OVER_TEXTURE := preload("res://assets/background/game_over/game_over.png")
+const GAME_OVER_FLY_TEXTURE := preload("res://assets/background/game_over/game_over_fly.png")
+const TRY_AGAIN_BUTTON_TEXTURE := preload("res://assets/buttons/try_again.png")
+const HOME_BUTTON_TEXTURE := preload("res://assets/buttons/home_button.png")
+const PIXELIFY_FONT := preload("res://assets/font/PixelifySans.ttf")
 
 const BASE_FOOD_COUNT := 8
 const TOP_SAFE_AREA := 72.0
@@ -37,6 +42,12 @@ const RESULT_TEXT_AREA_POSITION := Vector2(182, 62)
 const RESULT_TEXT_AREA_SIZE := Vector2(477, 294)
 const RESULT_BUTTON_POSITION := Vector2(275, 390)
 const RESULT_TEXT_COLOR := Color("#5D371E")
+const GAME_OVER_FRAME_SIZE := Vector2(1152, 648)
+const GAME_OVER_BUTTON_FRAME_SIZE := Vector2(169, 143)
+const GAME_OVER_DATA_POSITION := Vector2(410, 266)
+const GAME_OVER_DATA_SIZE := Vector2(340, 170)
+const GAME_OVER_TRY_AGAIN_BUTTON_POSITION := Vector2(363, 458)
+const GAME_OVER_HOME_BUTTON_POSITION := Vector2(620, 458)
 
 var icon_paths := {
 	"damage": "res://assets/icon/Upgrades/damage.png",
@@ -129,7 +140,14 @@ var result_body_label: Label
 var result_warning_label: Label
 var financial_button: TextureButton
 var result_start_button: TextureButton
+var game_over_root: Control
+var game_over_background: TextureRect
+var game_over_fly: TextureRect
+var game_over_data_label: Label
+var game_over_try_again_button: TextureButton
+var game_over_home_button: TextureButton
 var result_transition_active := false
+var game_over_action := ""
 var menu_title: Label
 var result_label: Label
 var forecast_warning_label: Label
@@ -538,6 +556,7 @@ func _build_menu() -> void:
 	content.add_child(play_button)
 
 	_build_result_art_menu()
+	_build_game_over_menu()
 
 func _build_result_art_menu() -> void:
 	result_art_root = Control.new()
@@ -643,6 +662,64 @@ func _get_button_frame(atlas: Texture2D, frame_index: int) -> AtlasTexture:
 	texture.region = Rect2(RESULT_BUTTON_FRAME_SIZE.x * frame_index, 0, RESULT_BUTTON_FRAME_SIZE.x, RESULT_BUTTON_FRAME_SIZE.y)
 	return texture
 
+func _build_game_over_menu() -> void:
+	game_over_root = Control.new()
+	game_over_root.visible = false
+	game_over_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu_layer.add_child(game_over_root)
+
+	game_over_background = TextureRect.new()
+	game_over_background.texture = GAME_OVER_TEXTURE
+	game_over_background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	game_over_background.stretch_mode = TextureRect.STRETCH_SCALE
+	game_over_root.add_child(game_over_background)
+
+	game_over_fly = TextureRect.new()
+	game_over_fly.texture = GAME_OVER_FLY_TEXTURE
+	game_over_fly.set_anchors_preset(Control.PRESET_FULL_RECT)
+	game_over_fly.stretch_mode = TextureRect.STRETCH_SCALE
+	game_over_root.add_child(game_over_fly)
+
+	game_over_data_label = Label.new()
+	game_over_data_label.position = GAME_OVER_DATA_POSITION
+	game_over_data_label.size = GAME_OVER_DATA_SIZE
+	game_over_data_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	game_over_data_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	game_over_data_label.add_theme_font_override("font", PIXELIFY_FONT)
+	game_over_data_label.add_theme_color_override("font_color", Color.WHITE)
+	game_over_data_label.add_theme_font_size_override("font_size", 20)
+	game_over_root.add_child(game_over_data_label)
+
+	game_over_try_again_button = TextureButton.new()
+	game_over_try_again_button.position = GAME_OVER_TRY_AGAIN_BUTTON_POSITION
+	game_over_try_again_button.texture_normal = _get_game_over_button_frame(TRY_AGAIN_BUTTON_TEXTURE, 0)
+	game_over_try_again_button.texture_hover = _get_game_over_button_frame(TRY_AGAIN_BUTTON_TEXTURE, 1)
+	game_over_try_again_button.texture_pressed = _get_game_over_button_frame(TRY_AGAIN_BUTTON_TEXTURE, 1)
+	game_over_try_again_button.ignore_texture_size = true
+	game_over_try_again_button.custom_minimum_size = GAME_OVER_BUTTON_FRAME_SIZE
+	game_over_try_again_button.size = GAME_OVER_BUTTON_FRAME_SIZE
+	game_over_try_again_button.pivot_offset = GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	game_over_try_again_button.pressed.connect(_on_game_over_button_pressed.bind("try_again"))
+	game_over_root.add_child(game_over_try_again_button)
+
+	game_over_home_button = TextureButton.new()
+	game_over_home_button.position = GAME_OVER_HOME_BUTTON_POSITION
+	game_over_home_button.texture_normal = _get_game_over_button_frame(HOME_BUTTON_TEXTURE, 0)
+	game_over_home_button.texture_hover = _get_game_over_button_frame(HOME_BUTTON_TEXTURE, 1)
+	game_over_home_button.texture_pressed = _get_game_over_button_frame(HOME_BUTTON_TEXTURE, 1)
+	game_over_home_button.ignore_texture_size = true
+	game_over_home_button.custom_minimum_size = GAME_OVER_BUTTON_FRAME_SIZE
+	game_over_home_button.size = GAME_OVER_BUTTON_FRAME_SIZE
+	game_over_home_button.pivot_offset = GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	game_over_home_button.pressed.connect(_on_game_over_button_pressed.bind("home"))
+	game_over_root.add_child(game_over_home_button)
+
+func _get_game_over_button_frame(atlas: Texture2D, frame_index: int) -> AtlasTexture:
+	var texture := AtlasTexture.new()
+	texture.atlas = atlas
+	texture.region = Rect2(GAME_OVER_BUTTON_FRAME_SIZE.x * frame_index, 0, GAME_OVER_BUTTON_FRAME_SIZE.x, GAME_OVER_BUTTON_FRAME_SIZE.y)
+	return texture
+
 func _get_result_flip_frame(frame_index: int) -> AtlasTexture:
 	var texture := AtlasTexture.new()
 	texture.atlas = RESULT_FLIP_TEXTURE
@@ -654,6 +731,8 @@ func _show_default_menu_panel() -> void:
 		default_menu_panel.visible = true
 	if result_art_root:
 		result_art_root.visible = false
+	if game_over_root:
+		game_over_root.visible = false
 	result_transition_active = false
 
 func _show_result_art_panel() -> void:
@@ -661,6 +740,8 @@ func _show_result_art_panel() -> void:
 		default_menu_panel.visible = false
 	if result_art_root:
 		result_art_root.visible = true
+	if game_over_root:
+		game_over_root.visible = false
 	if result_board:
 		result_board.scale = Vector2.ONE
 	if result_texture_rect:
@@ -668,6 +749,14 @@ func _show_result_art_panel() -> void:
 	if result_motion_root:
 		result_motion_root.position = Vector2.ZERO
 		result_motion_root.modulate.a = 1.0
+
+func _show_game_over_art_panel() -> void:
+	if default_menu_panel:
+		default_menu_panel.visible = false
+	if result_art_root:
+		result_art_root.visible = false
+	if game_over_root:
+		game_over_root.visible = true
 
 func _show_start_menu() -> void:
 	menu_state = "start"
@@ -890,10 +979,9 @@ func _show_game_over(reason: String) -> void:
 	menu_state = "game_over"
 	menu_layer.visible = true
 	hud_layer.visible = false
-	_show_default_menu_panel()
+	_show_game_over_art_panel()
 	if forecast_warning_label:
 		forecast_warning_label.visible = false
-	menu_title.text = "Game Over"
 	result_label.text = "%s\nReached Day %d\nMoney: ₱%d\nReputation: %d\nSatisfaction: %d\nFlies swatted: %d" % [
 		reason,
 		market_day,
@@ -902,6 +990,15 @@ func _show_game_over(reason: String) -> void:
 		customer_satisfaction,
 		total_flies_killed
 	]
+	game_over_data_label.text = "%s\nReached Day %d\nMoney: %s\nReputation: %d\nSatisfaction: %d\nFlies swatted: %d" % [
+		reason,
+		market_day,
+		_format_peso(current_money),
+		reputation,
+		customer_satisfaction,
+		total_flies_killed
+	]
+	_play_game_over_entrance()
 	play_button.text = "Restart Market"
 
 func _update_bankruptcy_state() -> void:
@@ -1066,6 +1163,60 @@ func _play_result_container_entrance() -> void:
 	var entrance_tween := create_tween()
 	entrance_tween.tween_property(result_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 	entrance_tween.tween_property(result_board, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _play_game_over_entrance() -> void:
+	if not game_over_root:
+		return
+
+	game_over_background.position = Vector2(0, GAME_OVER_FRAME_SIZE.y)
+	game_over_fly.position = Vector2(0, GAME_OVER_FRAME_SIZE.y)
+	game_over_data_label.position = GAME_OVER_DATA_POSITION + Vector2(0, 26)
+	game_over_data_label.modulate.a = 0.0
+	game_over_try_again_button.modulate.a = 0.0
+	game_over_home_button.modulate.a = 0.0
+	game_over_try_again_button.disabled = true
+	game_over_home_button.disabled = true
+
+	var background_tween := create_tween()
+	background_tween.tween_property(game_over_background, "position", Vector2.ZERO, 0.46).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+
+	var fly_tween := create_tween()
+	fly_tween.tween_interval(0.5)
+	fly_tween.tween_property(game_over_fly, "position", Vector2.ZERO, 0.48).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+	await fly_tween.finished
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	content_tween.tween_property(game_over_data_label, "position", GAME_OVER_DATA_POSITION, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_data_label, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_try_again_button, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_home_button, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await content_tween.finished
+	game_over_try_again_button.disabled = false
+	game_over_home_button.disabled = false
+
+func _on_game_over_button_pressed(action: String) -> void:
+	if result_transition_active:
+		return
+	game_over_action = action
+	_play_game_over_button_action()
+
+func _play_game_over_button_action() -> void:
+	result_transition_active = true
+	var target := game_over_try_again_button if game_over_action == "try_again" else game_over_home_button
+	if target:
+		target.disabled = true
+		await _play_bouncy_pop(target)
+	if game_over_try_again_button:
+		game_over_try_again_button.disabled = false
+	if game_over_home_button:
+		game_over_home_button.disabled = false
+	result_transition_active = false
+	if game_over_action == "home":
+		_show_start_menu()
+	else:
+		_start_new_run()
 
 func _play_start_day_button_animation() -> void:
 	result_transition_active = true
