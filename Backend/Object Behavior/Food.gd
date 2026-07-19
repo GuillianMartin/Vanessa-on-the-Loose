@@ -136,6 +136,7 @@ var is_spoiling := false
 var is_spoil_pending := false
 var poison_effect_timer := 0.0
 var egg_label: Label
+var protected := false
 
 func _ready() -> void:
 	add_to_group("foods")
@@ -173,7 +174,7 @@ func get_fresh_sell_value() -> int:
 	return int(ceilf(config.sell_price))
 
 func eat(amount: float) -> int:
-	if freshness <= 0.0:
+	if protected or freshness <= 0.0:
 		return 0
 
 	freshness = maxf(freshness - amount, 0.0)
@@ -184,6 +185,9 @@ func eat(amount: float) -> int:
 		_play_spoil_animation()
 
 	return nutrition
+
+func set_protected(value: bool) -> void:
+	protected = value
 
 func get_radius() -> float:
 	return radius

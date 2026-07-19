@@ -204,6 +204,10 @@ var is_dying := false
 var death_frame_index := 0
 var blink_timer := 0.0
 
+var fan_timer := 0.0
+var fan_direction := 0.0
+var fan_target_x := 0.0
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -294,6 +298,10 @@ func _process(delta: float) -> void:
 		if knockback_timer <= 0.0:
 			target_food = null
 			target_refresh_timer = 0.0
+		return
+
+	if fan_timer > 0.0:
+		_process_fan(delta)
 		return
 
 	if behavior != null and behavior.name == "Blink":
@@ -465,6 +473,37 @@ func _is_food_valid(food: Variant) -> bool:
 		return false
 
 	return (food as Node2D).is_inside_tree()
+
+func apply_big_fan(direction: float, target_x: float, strength: float) -> void:
+	fan_timer = 1.4
+	fan_direction = direction
+	fan_target_x = target_x
+	target_food = null
+	target_refresh_timer = 0.0
+	_set_flying_sprite()
+
+func _process_fan(delta: float) -> void:
+	fan_timer -= delta
+
+	# Resistance scales with the fly's own speed: faster flies push back harder,
+	# but the fan always keeps a minimum drift so they end up on the chosen side.
+	var base_speed := behavior.speed if behavior != null else 120.0
+	var resistance := clampf(base_speed / 600.0, 0.0, 0.7)
+	var push_speed := maxf(base_speed * 1.6 * (1.0 - resistance), 220.0)
+
+	velocity = Vector2(fan_direction * push_speed, velocity.y * 0.6)
+	position += velocity * delta
+	_update_sprite_direction()
+	_keep_inside_bounds()
+
+	if (fan_direction < 0.0 and global_position.x <= fan_target_x) or (fan_direction > 0.0 and global_position.x >= fan_target_x):
+		velocity = Vector2(fan_direction * base_speed * 0.6, randf_range(-base_speed * 0.3, base_speed * 0.3))
+		fan_timer = 0.0
+		return
+
+	if fan_timer <= 0.0:
+		velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * base_speed
+		_set_flying_sprite()
 
 func _start_knockback() -> void:
 	click_streak = 0

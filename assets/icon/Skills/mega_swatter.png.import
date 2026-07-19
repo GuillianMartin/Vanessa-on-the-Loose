@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djxg5cnu841kd"
-path="res://.godot/imported/big_fan.png-bd64146b044ff5c6253f61978af6871b.ctex"
+uid="uid://ced8encicx4eu"
+path="res://.godot/imported/mega_swatter.png-fede4e2979c7961583612a93259e2907.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icon/big_fan.png"
-dest_files=["res://.godot/imported/big_fan.png-bd64146b044ff5c6253f61978af6871b.ctex"]
+source_file="res://assets/icon/Skills/mega_swatter.png"
+dest_files=["res://.godot/imported/mega_swatter.png-fede4e2979c7961583612a93259e2907.ctex"]
 
 [params]
 

@@ -10,6 +10,7 @@ const CUSTOMER_HAND_SCRIPT := preload("res://Backend/Object Behavior/CustomerHan
 const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const MARKET_PROGRESSION := preload("res://Backend/MarketProgression.gd")
 const REWARD_MANAGER := preload("res://Backend/RewardManager.gd")
+const BUY_SKILLS := preload("res://Backend/Buy_skills.gd")
 const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_default.png")
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 const RESULT_CONTAINER_TEXTURE := preload("res://assets/ui_container/result_container.png")
@@ -112,6 +113,11 @@ var match_timer_label: Label
 var rush_label: Label
 var upgrade_label: Label
 var upgrade_buttons := {}
+var skill_label: Label
+var skill_buttons := {}
+var skill_timers := {}
+var big_fan_popup: Control
+var big_fan_choice := "left"
 var default_menu_panel: PanelContainer
 var result_art_root: Control
 var result_board: Control
@@ -162,6 +168,7 @@ func _process(delta: float) -> void:
 	_update_customer_spawns(delta)
 	_process_day_clock(delta)
 	_maintain_food_loop()
+	_update_skills(delta)
 	if boss_round_active:
 		_update_background_animation(delta)
 		return
@@ -170,6 +177,8 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if not day_active:
+		return
+	if big_fan_popup != null and big_fan_popup.visible:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		_start_swatter_attack()
@@ -337,6 +346,7 @@ func _build_hud() -> void:
 	boss_row.add_child(boss_health_bar)
 
 	_build_upgrade_panel()
+	_build_skill_panel()
 
 func _make_hud_label(text: String, width: float) -> Label:
 	var label := Label.new()
@@ -382,6 +392,94 @@ func _build_upgrade_panel() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(button)
 		upgrade_buttons[upgrade_name] = button
+
+func _build_skill_panel() -> void:
+	var definitions := BUY_SKILLS.get_skill_definitions()
+	skill_timers = {}
+	skill_buttons = {}
+
+	var panel := PanelContainer.new()
+	panel.name = "SkillPanel"
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	panel.offset_left = -342
+	panel.offset_top = -150
+	panel.offset_right = -12
+	panel.offset_bottom = -12
+	hud_layer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 6)
+	content.alignment = BoxContainer.ALIGNMENT_END
+	margin.add_child(content)
+
+	skill_label = Label.new()
+	skill_label.text = "Skills"
+	skill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	content.add_child(skill_label)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.alignment = BoxContainer.ALIGNMENT_END
+	content.add_child(row)
+
+	for skill_id in definitions.keys():
+		var def: Dictionary = definitions[skill_id]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(96, 72)
+		button.pressed.connect(_on_skill_pressed.bind(skill_id))
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.tooltip_text = str(def.get("description", ""))
+		row.add_child(button)
+		skill_buttons[skill_id] = button
+		skill_timers[skill_id] = 0.0
+
+	_build_big_fan_popup()
+
+func _build_big_fan_popup() -> void:
+	big_fan_popup = Control.new()
+	big_fan_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
+	big_fan_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	big_fan_popup.visible = false
+	hud_layer.add_child(big_fan_popup)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	big_fan_popup.add_child(center)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	center.add_child(box)
+
+	var title := Label.new()
+	title.text = "Big Fan: blow flies to which side?"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	box.add_child(btn_row)
+
+	var left_btn := Button.new()
+	left_btn.text = "Left"
+	left_btn.custom_minimum_size = Vector2(120, 44)
+	left_btn.pressed.connect(_on_big_fan_choice.bind("left"))
+	btn_row.add_child(left_btn)
+
+	var right_btn := Button.new()
+	right_btn.text = "Right"
+	right_btn.custom_minimum_size = Vector2(120, 44)
+	right_btn.pressed.connect(_on_big_fan_choice.bind("right"))
+	btn_row.add_child(right_btn)
 
 func _build_menu() -> void:
 	menu_layer = CanvasLayer.new()
@@ -695,6 +793,7 @@ func _start_day() -> void:
 
 	swatter_entity.call("reset")
 	swatter_entity.call("set_day", market_day)
+	_reset_skill_state()
 	day_active = true
 	_set_swatter_active(true)
 	menu_layer.visible = false
@@ -1321,6 +1420,7 @@ func _update_hud() -> void:
 			match_timer_label.text = "Time: %d:%02d" % [minutes, seconds]
 
 	_update_upgrade_buttons()
+	_update_skill_buttons()
 
 func _set_boss_health_visible(visible: bool) -> void:
 	if boss_health_bar == null:
@@ -1343,6 +1443,28 @@ func _update_upgrade_buttons() -> void:
 		button.icon = icon_texture
 		button.text = "₱%d" % cost
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
+
+func _update_skill_buttons() -> void:
+	if swatter_entity == null:
+		return
+
+	var definitions := BUY_SKILLS.get_skill_definitions()
+	for skill_id in skill_buttons.keys():
+		var button := skill_buttons[skill_id] as Button
+		var def: Dictionary = definitions[skill_id]
+		var cost := int(def.get("cost", 0))
+		var icon_texture := load(str(def.get("icon", ""))) as Texture2D
+		button.icon = icon_texture
+		var remaining := float(skill_timers.get(skill_id, 0.0))
+		if remaining > 0.0:
+			button.text = "%.0fs" % remaining
+			button.disabled = true
+		else:
+			button.text = "₱%d" % cost
+			button.disabled = not _can_afford_skill(cost) or not day_active
+
+func _can_afford_skill(cost: int) -> bool:
+	return current_money >= cost
 
 func _update_customer_spawns(delta: float) -> void:
 	if not day_active or customer_container == null:
@@ -1426,6 +1548,129 @@ func _on_upgrade_pressed(upgrade_name: String) -> void:
 
 func _can_afford_upgrade(cost: int) -> bool:
 	return current_money >= cost
+
+func _on_skill_pressed(skill_id: String) -> void:
+	if swatter_entity == null or not day_active:
+		return
+
+	var definitions := BUY_SKILLS.get_skill_definitions()
+	if not definitions.has(skill_id):
+		return
+
+	var def: Dictionary = definitions[skill_id]
+	var cost := int(def.get("cost", 0))
+	if float(skill_timers.get(skill_id, 0.0)) > 0.0:
+		return
+	if not _can_afford_skill(cost):
+		return
+
+	current_money -= cost
+	_update_bankruptcy_state()
+	if _check_debt_limit("Maximum debt reached."):
+		return
+
+	_activate_skill(skill_id, def)
+	_update_hud()
+
+func _activate_skill(skill_id: String, def: Dictionary) -> void:
+	match int(def.get("type", -1)):
+		BUY_SKILLS.SkillType.MEGA_SWATTER:
+			swatter_entity.call("set_mega_swatter", true)
+			swatter_sprite.scale = Vector2.ONE * float(swatter_entity.call("get_size_multiplier"))
+		BUY_SKILLS.SkillType.INSTANT_ENERGY:
+			swatter_entity.call("set_instant_energy", true)
+		BUY_SKILLS.SkillType.FRESH_GOODS:
+			_set_food_protection(true)
+		BUY_SKILLS.SkillType.BIG_FAN:
+			big_fan_popup.visible = true
+			if swatter_sprite != null:
+				swatter_sprite.visible = false
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+			return
+
+	var duration := float(def.get("duration", 0.0))
+	skill_timers[skill_id] = duration
+	_update_hud()
+
+func _set_food_protection(value: bool) -> void:
+	if food_container == null:
+		return
+	for food in food_container.get_children():
+		if is_instance_valid(food) and food.has_method("set_protected"):
+			food.call("set_protected", value)
+
+func _on_big_fan_choice(side: String) -> void:
+	big_fan_popup.visible = false
+	big_fan_choice = side
+	if swatter_sprite != null:
+		swatter_sprite.visible = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
+
+	var def: Dictionary = BUY_SKILLS.get_skill_definitions()["big_fan"]
+	_activate_big_fan(side)
+	skill_timers["big_fan"] = float(def.get("duration", 0.0))
+	_update_hud()
+
+func _activate_big_fan(side: String) -> void:
+	if fly_container == null:
+		return
+
+	var bounds := _get_fly_bounds()
+	var direction := -1.0 if side == "left" else 1.0
+	var target_x := bounds.position.x + 30.0 if side == "left" else bounds.end.x - 30.0
+	var fan_strength := 900.0
+
+	for fly in fly_container.get_children():
+		if not is_instance_valid(fly) or fly.is_queued_for_deletion():
+			continue
+		if fly.is_in_group("boss_flies") or fly.is_in_group("knight_guards"):
+			continue
+		if fly.has_method("apply_big_fan"):
+			fly.call("apply_big_fan", direction, target_x, fan_strength)
+
+func _update_skills(delta: float) -> void:
+	if swatter_entity == null:
+		return
+
+	var expired := []
+	for skill_id in skill_timers.keys():
+		var remaining := float(skill_timers.get(skill_id, 0.0))
+		if remaining <= 0.0:
+			continue
+		remaining -= delta
+		if remaining <= 0.0:
+			remaining = 0.0
+			expired.append(skill_id)
+		skill_timers[skill_id] = remaining
+
+	for skill_id in expired:
+		_deactivate_skill(skill_id)
+
+	_update_skill_buttons()
+
+func _deactivate_skill(skill_id: String) -> void:
+	var definitions := BUY_SKILLS.get_skill_definitions()
+	var def: Dictionary = definitions.get(skill_id, {})
+	match int(def.get("type", -1)):
+		BUY_SKILLS.SkillType.MEGA_SWATTER:
+			swatter_entity.call("set_mega_swatter", false)
+			swatter_sprite.scale = Vector2.ONE
+		BUY_SKILLS.SkillType.INSTANT_ENERGY:
+			swatter_entity.call("set_instant_energy", false)
+		BUY_SKILLS.SkillType.FRESH_GOODS:
+			_set_food_protection(false)
+
+func _reset_skill_state() -> void:
+	for skill_id in skill_timers.keys():
+		skill_timers[skill_id] = 0.0
+	if swatter_entity != null:
+		swatter_entity.call("set_mega_swatter", false)
+		swatter_entity.call("set_instant_energy", false)
+	swatter_sprite.scale = Vector2.ONE
+	_set_food_protection(false)
+	if big_fan_popup != null:
+		big_fan_popup.visible = false
+	_update_skill_buttons()
 
 func _update_rush_hour(delta: float) -> void:
 	if rush_active:
@@ -1648,6 +1893,22 @@ func _start_swatter_attack() -> void:
 	swatter_sprite.frame = 0
 	swatter_attack_timer = SWATTER_ATTACK_FRAMES * SWATTER_ATTACK_FRAME_TIME
 	swatter_frame_timer = SWATTER_ATTACK_FRAME_TIME
+
+	if swatter_entity != null and swatter_entity.has_method("get_size_multiplier") and float(swatter_entity.call("get_size_multiplier")) > 1.0:
+		_mega_swatter_hit_area()
+
+func _mega_swatter_hit_area() -> void:
+	if fly_container == null or swatter_entity == null:
+		return
+	var cursor := get_viewport().get_mouse_position()
+	var size_mult := float(swatter_entity.call("get_size_multiplier"))
+	var hit_radius := 90.0 * size_mult
+	var damage_amount := int(swatter_entity.call("get_damage")) if swatter_entity.has_method("get_damage") else 1
+	for fly in fly_container.get_children():
+		if not is_instance_valid(fly) or fly.is_queued_for_deletion() or not fly.has_method("take_damage"):
+			continue
+		if fly.global_position.distance_to(cursor) <= hit_radius:
+			fly.call("take_damage", damage_amount)
 
 func _show_default_swatter() -> void:
 	swatter_sprite.texture = SWATTER_DEFAULT_TEXTURE

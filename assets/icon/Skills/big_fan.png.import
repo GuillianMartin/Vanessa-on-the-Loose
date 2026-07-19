@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b4dd0tv8mj4md"
-path="res://.godot/imported/instant_energy.png-c3add6263a6a413a4032702826360b01.ctex"
+uid="uid://bckvnqdt7jxxs"
+path="res://.godot/imported/big_fan.png-fd6b0ecea75a28459424165b103ed538.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icon/instant_energy.png"
-dest_files=["res://.godot/imported/instant_energy.png-c3add6263a6a413a4032702826360b01.ctex"]
+source_file="res://assets/icon/Skills/big_fan.png"
+dest_files=["res://.godot/imported/big_fan.png-fd6b0ecea75a28459424165b103ed538.ctex"]
 
 [params]
 

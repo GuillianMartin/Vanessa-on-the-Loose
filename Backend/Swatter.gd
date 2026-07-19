@@ -15,6 +15,9 @@ const COMBO_WINDOW := 1.2 # seconds allowed between hits to maintain combo
 const BASE_REGEN_RATE := 12.0
 const MAX_COMBO := 5
 
+const MEGA_SWATTER_DAMAGE_MULT := 1.5
+const MEGA_SWATTER_SIZE_MULT := 2.0
+
 var max_energy := MAX_ENERGY
 var swat_cost := SWAT_COST
 var regen_rate := BASE_REGEN_RATE
@@ -30,6 +33,10 @@ var damage_level := 0
 var speed_level := 0
 var energy_level := 0
 var current_day := 1
+
+# Skill state
+var mega_swatter_active := false
+var instant_energy_active := false
 
 func _ready() -> void:
 	add_to_group("swatters")
@@ -54,6 +61,8 @@ func _process(delta: float) -> void:
 		energy_changed.emit(energy, max_energy)
 
 func get_effective_swat_cost() -> float:
+	if instant_energy_active:
+		return 0.0
 	var day_penalty := float(max(current_day - 1, 0)) * DAILY_SWAT_COST_INCREASE
 	return maxf(swat_cost + day_penalty, 4.0)
 
@@ -81,6 +90,8 @@ func reset_upgrades() -> void:
 	damage_level = 0
 	speed_level = 0
 	energy_level = 0
+	mega_swatter_active = false
+	instant_energy_active = false
 	reset()
 
 func swat() -> bool:
@@ -97,9 +108,23 @@ func is_swat_active() -> bool:
 
 func get_damage() -> int:
 	var final_damage := damage
+	if mega_swatter_active:
+		final_damage = int(ceilf(float(final_damage) * MEGA_SWATTER_DAMAGE_MULT))
 	if randf() < crit_chance:
 		final_damage += max(1, int(ceil(float(damage) * 0.75)))
 	return final_damage
+
+func get_size_multiplier() -> float:
+	return MEGA_SWATTER_SIZE_MULT if mega_swatter_active else 1.0
+
+func set_mega_swatter(active: bool) -> void:
+	mega_swatter_active = active
+
+func set_instant_energy(active: bool) -> void:
+	instant_energy_active = active
+	if active:
+		energy = max_energy
+		energy_changed.emit(energy, max_energy)
 
 func register_fly_kill() -> void:
 	current_combo = mini(current_combo + 1, MAX_COMBO)
