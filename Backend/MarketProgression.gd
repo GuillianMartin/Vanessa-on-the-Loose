@@ -101,6 +101,10 @@ static func get_market_event(day: int) -> Dictionary:
 static func get_difficulty_level(day: int) -> int:
 	return max(day, 1)
 
+static func get_boss_guard_count(day: int) -> int:
+	var guards: int = 1 + int(floor(float(max(day, 1)) / 10.0))
+	return maxi(guards, 2)
+
 static func get_daily_price_roll() -> float:
 	return randf_range(0.9, 1.2)
 

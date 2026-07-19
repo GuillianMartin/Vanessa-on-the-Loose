@@ -4,6 +4,8 @@ signal died(fly: Area2D)
 signal spawn_requested(position: Vector2, behavior_name: String)
 signal health_changed(lives_remaining: int, max_lives: int, health: int, max_health: int)
 signal shockwave_released(origin: Vector2)
+signal guard_blink_requested
+signal guard_protect_requested(active: bool)
 
 const BOSS_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/BossFly_Attritbutes.gd")
 const FLY_SCRIPT := preload("res://Backend/Object Behavior/Fly.gd")
@@ -32,7 +34,7 @@ const EFFECT_FRAME_TIME := 0.045
 const TARGET_REFRESH_TIME := 0.7
 const BASE_EAT_DISTANCE := 72.0
 const BITE_DAMAGE := 12.0
-const BITE_INTERVAL := 0.45
+const BITE_INTERVAL := 1.0
 const BOSS_HEALTH_PER_BAR := 200
 const BOSS_SPEED := 2000.0
 const BOSS_IMAGE_SCALE := Vector2(1.2, 1.2)
@@ -193,6 +195,7 @@ func _process(delta: float) -> void:
 		if stun_timer <= 0.0:
 			is_invulnerable = false
 			input_pickable = true
+			guard_protect_requested.emit(false)
 			_set_state(STATE_FLYING, true)
 		return
 
@@ -382,7 +385,7 @@ func _try_lay_eggs_on_food() -> void:
 	var hatch_options := FLY_SCRIPT.get_hatch_options_for_parent(BOSS_EGG_PARENT_NAME)
 	for _index in range(eggs_to_lay):
 		var egg := FLY_EGG_SCRIPT.new() as Area2D
-		egg.call("configure", BOSS_EGG_HEALTH, hatch_options, target_food)
+		egg.call("configure", BOSS_EGG_HEALTH, hatch_options, target_food, BOSS_EGG_PARENT_NAME)
 		egg.add_to_group(EGG_FOOD_GROUP)
 		target_food.add_child(egg)
 		var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(10.0, 30.0)
@@ -413,11 +416,15 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 			damage_amount = int(swatter.call("get_damage"))
 		take_damage(damage_amount)
 
+static func get_guard_health() -> int:
+	return int(BOSS_HEALTH_PER_BAR * BOSS_LIVES * 0.5)
+
 func take_damage(_amount: int) -> void:
 	if is_invulnerable or is_dying:
 		return
 
 	current_health -= _amount
+	guard_blink_requested.emit()
 	stun_hits_progress += 1
 	if stun_hits_progress >= stun_hits_required and not is_invulnerable and not is_dying:
 		stun_hits_progress = 0
@@ -473,6 +480,7 @@ func _enter_stun_state() -> void:
 	is_invulnerable = true
 	input_pickable = false
 	stun_timer = STUN_DURATION
+	guard_protect_requested.emit(true)
 	velocity = Vector2.ZERO
 	_set_state(STATE_STUN, true)
 

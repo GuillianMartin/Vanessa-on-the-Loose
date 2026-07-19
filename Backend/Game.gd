@@ -4,6 +4,7 @@ signal financial_reports_generated(day_end_report: Dictionary, pre_day_forecast:
 
 const FLY_SCENE := preload("res://Objects/Fly.tscn")
 const BOSS_FLY_SCRIPT := preload("res://Backend/Object Behavior/BossFly.gd")
+const BOSS_KNIGHT_GUARD_SCRIPT := preload("res://Backend/Object Behavior/BossKnightGuard.gd")
 const FOOD_SCRIPT := preload("res://Backend/Object Behavior/Food.gd")
 const CUSTOMER_HAND_SCRIPT := preload("res://Backend/Object Behavior/CustomerHand.gd")
 const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
@@ -48,6 +49,8 @@ var difficulty_level := 1
 var current_money := 0
 var boss_round_active := false
 var boss_round_pending := false
+var boss_warning_shown := false
+var active_knight_guards: Array[Node2D] = []
 var bankruptcy_strikes: int = 0
 var is_bankrupt := false
 var reputation := 100
@@ -573,6 +576,7 @@ func _show_start_menu() -> void:
 	day_active = false
 	boss_round_active = false
 	boss_round_pending = false
+	boss_warning_shown = false
 	_set_swatter_active(false)
 	_set_boss_health_visible(false)
 	menu_layer.visible = true
@@ -599,16 +603,43 @@ func _on_menu_button_pressed() -> void:
 			_play_forecast_transition()
 		"pre_day_forecast":
 			_play_start_day_button_animation()
+		"boss_warning":
+			boss_warning_shown = true
+			_start_day()
 		"start", "game_over":
 			_start_new_run()
 		_:
 			_start_new_run()
+
+func _show_boss_warning_screen() -> void:
+	menu_state = "boss_warning"
+	day_active = false
+	boss_round_active = false
+	_set_swatter_active(false)
+	_set_boss_health_visible(false)
+	menu_layer.visible = true
+	hud_layer.visible = false
+	fly_container.visible = false
+	food_container.visible = false
+	customer_container.visible = false
+	_clear_flies()
+	_clear_food()
+	_clear_customers()
+	_show_default_menu_panel()
+	menu_title.text = "⚠ BOSS WARNING ⚠"
+	result_label.text = "A powerful Boss Fly awaits! Protect your market and survive the Boss Fight to continue.\n\nIt will be guarded by elite Knight Flies. Customers will still visit during the fight, so keep your reputation and satisfaction up."
+	if forecast_warning_label:
+		forecast_warning_label.visible = true
+		forecast_warning_label.text = "Boss Fight incoming — prepare your swatter!"
+		forecast_warning_label.add_theme_color_override("font_color", Color(1.0, 0.12, 0.08))
+	play_button.text = "Enter Boss Fight"
 
 func _start_new_run() -> void:
 	market_day = 1
 	difficulty_level = 1
 	boss_round_active = false
 	boss_round_pending = false
+	boss_warning_shown = false
 	current_money = MARKET_PROGRESSION.STARTING_MONEY
 	bankruptcy_strikes = 0
 	is_bankrupt = false
@@ -627,6 +658,10 @@ func _start_new_run() -> void:
 	_start_day()
 
 func _start_day() -> void:
+	if boss_round_pending and not boss_warning_shown:
+		_show_boss_warning_screen()
+		return
+
 	var starting_boss_round := boss_round_pending
 	var used_prepared_restock_plan := not starting_boss_round and _has_prepared_restock_plan(market_day)
 	boss_round_active = starting_boss_round
@@ -706,7 +741,7 @@ func _complete_day() -> void:
 		_game_over_from_day_end("Bankruptcy was not recovered before market close.")
 		return
 
-	boss_round_pending = _is_boss_day(completed_market_day)
+	boss_round_pending = _is_boss_day(market_day + 1)
 	market_day += 1
 	next_day_forecast = generate_pre_day_forecast()
 	financial_reports_generated.emit(current_day_report, next_day_forecast)
@@ -1087,6 +1122,7 @@ func _is_boss_day(day: int) -> bool:
 func _spawn_boss_fight() -> void:
 	_clear_flies()
 	_clear_customers()
+	active_knight_guards.clear()
 	var bounds := _get_fly_bounds()
 	var boss := BOSS_FLY_SCRIPT.new() as Node2D
 	boss.name = "BossFly"
@@ -1095,11 +1131,55 @@ func _spawn_boss_fight() -> void:
 	boss.connect("spawn_requested", Callable(self, "_on_boss_spawn_requested"))
 	boss.connect("health_changed", Callable(self, "_on_boss_health_changed"))
 	boss.connect("shockwave_released", Callable(self, "_on_boss_shockwave_released"))
+	boss.connect("guard_blink_requested", Callable(self, "_on_boss_guard_blink_requested"))
+	boss.connect("guard_protect_requested", Callable(self, "_on_boss_guard_protect_requested"))
 	fly_container.add_child(boss)
 	boss.call("configure", bounds, 5)
 	boss.call("begin_boss_fight")
 	flies_left = 1
+
+	var guard_count := MARKET_PROGRESSION.get_boss_guard_count(market_day)
+	_spawn_knight_guards(boss, guard_count)
 	_update_hud()
+
+func _spawn_knight_guards(boss: Node2D, count: int) -> void:
+	if count <= 0 or boss == null:
+		return
+	var bounds := _get_fly_bounds()
+	var guard_health := int(boss.call("get_guard_health"))
+	var boss_position := boss.global_position
+	for _index in range(count):
+		var guard = BOSS_KNIGHT_GUARD_SCRIPT.new() as Area2D
+		guard.name = "KnightGuard"
+		var angle := randf_range(0.0, TAU)
+		var offset := Vector2.RIGHT.rotated(angle) * randf_range(120.0, 200.0)
+		guard.position = bounds.position + Vector2(
+			clampf(boss_position.x + offset.x - bounds.position.x, 60.0, bounds.size.x - 60.0),
+			clampf(boss_position.y + offset.y - bounds.position.y, 80.0, bounds.size.y - 80.0)
+		)
+		guard.call("configure", bounds, boss_position, guard_health)
+		guard.connect("died", Callable(self, "_on_knight_guard_died"))
+		fly_container.add_child(guard)
+		active_knight_guards.append(guard)
+
+func _on_boss_guard_blink_requested() -> void:
+	if active_knight_guards.is_empty():
+		return
+	var alive_guards: Array[Node2D] = []
+	for guard in active_knight_guards:
+		if is_instance_valid(guard) and guard.has_method("play_blink"):
+			alive_guards.append(guard)
+	if alive_guards.is_empty():
+		return
+	alive_guards.pick_random().call("play_blink")
+
+func _on_boss_guard_protect_requested(active: bool) -> void:
+	for guard in active_knight_guards:
+		if is_instance_valid(guard) and guard.has_method("set_invulnerable"):
+			guard.call("set_invulnerable", active)
+
+func _on_knight_guard_died(_guard: Area2D) -> void:
+	active_knight_guards = active_knight_guards.filter(func(g): return is_instance_valid(g) and g != _guard)
 
 func _on_boss_died(boss_node: Node) -> void:
 	if not day_active:
@@ -1121,7 +1201,24 @@ func _complete_boss_round() -> void:
 	_clear_food()
 	_clear_customers()
 	_set_boss_health_visible(false)
-	_start_day()
+
+	day_leftover_earned = _sell_leftover_food()
+	day_fly_reward = REWARD_MANAGER.calculate_fly_reward(day_flies_killed)
+	current_money += day_fly_reward
+	day_money_earned += day_fly_reward
+
+	var completed_market_day := market_day
+	current_day_report = generate_day_end_report()
+	boss_round_pending = false
+	market_day += 1
+	next_day_forecast = generate_pre_day_forecast()
+	financial_reports_generated.emit(current_day_report, next_day_forecast)
+	if bool(next_day_forecast.get("is_bankruptcy_state", false)) and bankruptcy_strikes >= MAX_BANKRUPTCY_STRIKES:
+		market_day = completed_market_day
+		_game_over_from_day_end("Bankruptcy strike limit reached.")
+		return
+
+	_show_day_end_summary_screen(completed_market_day)
 
 func _clear_food() -> void:
 	if food_container:
@@ -1168,6 +1265,9 @@ func _on_boss_shockwave_released(_origin: Vector2) -> void:
 func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = "") -> void:
 	if not day_active:
 		return
+	if behavior_name == "KnightGuard" and boss_round_active:
+		_spawn_hatched_knight_guard(spawn_position)
+		return
 	if boss_round_active and behavior_name == "":
 		return
 	var bounds := _get_fly_bounds()
@@ -1175,6 +1275,23 @@ func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = ""
 	_spawn_fly(spawn_position + offset, bounds, false, false, behavior_name)
 	flies_left += 1
 	_update_hud()
+
+func _spawn_hatched_knight_guard(spawn_position: Vector2) -> void:
+	var boss := fly_container.get_node_or_null("BossFly")
+	if boss == null:
+		return
+	var bounds := _get_fly_bounds()
+	var guard_health := int(boss.call("get_guard_health"))
+	var guard = BOSS_KNIGHT_GUARD_SCRIPT.new() as Area2D
+	guard.name = "KnightGuard"
+	guard.position = bounds.position + Vector2(
+		clampf(spawn_position.x - bounds.position.x, 60.0, bounds.size.x - 60.0),
+		clampf(spawn_position.y - bounds.position.y, 80.0, bounds.size.y - 80.0)
+	)
+	guard.call("configure", bounds, boss.global_position, guard_health)
+	guard.connect("died", Callable(self, "_on_knight_guard_died"))
+	fly_container.add_child(guard)
+	active_knight_guards.append(guard)
 
 func _update_hud() -> void:
 	if day_label:
@@ -1228,7 +1345,7 @@ func _update_upgrade_buttons() -> void:
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
 
 func _update_customer_spawns(delta: float) -> void:
-	if not day_active or boss_round_active or customer_container == null:
+	if not day_active or customer_container == null:
 		return
 	customer_spawn_timer -= delta
 	if customer_spawn_timer <= 0.0:

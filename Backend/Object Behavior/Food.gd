@@ -368,7 +368,6 @@ func _ease_out_food() -> void:
 		_on_food_eased_out()
 		return
 
-	create_tween()
 	var tween := create_tween()
 	tween.tween_property(sprite, "scale", Vector2.ZERO, 0.1)
 	tween.set_trans(Tween.TRANS_QUAD)

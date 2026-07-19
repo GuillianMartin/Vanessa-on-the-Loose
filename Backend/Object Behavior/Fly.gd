@@ -511,7 +511,7 @@ func _try_lay_eggs_on_food() -> void:
 	var hatch_options := get_hatch_options_for_parent(behavior.name, behavior.unlock_day)
 	for _index in range(eggs_to_lay):
 		var egg := FLY_EGG_SCRIPT.new() as Area2D
-		egg.call("configure", behavior.max_health, hatch_options, target_food)
+		egg.call("configure", behavior.max_health, hatch_options, target_food, behavior.name)
 		egg.add_to_group(EGG_FOOD_GROUP)
 		target_food.add_child(egg)
 		var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(10.0, 30.0)

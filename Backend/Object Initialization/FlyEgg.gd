@@ -17,14 +17,16 @@ var hatch_timer := 0.0
 var frame_timer := 0.0
 var hatching := false
 var food_parent: Node2D = null
-var egg_damage_per_second := 1.5
+var egg_damage_per_second := 0.5
+var parent_name := ""
+const KNIGHT_GUARD_HATCH_CHANCE := 0.08
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
 var health_bar: ProgressBar
 var damage_label: Label
 
-func configure(new_health: int, new_hatch_options: Array[String], parent_food: Node2D = null) -> void:
+func configure(new_health: int, new_hatch_options: Array[String], parent_food: Node2D = null, parent: String = "") -> void:
 	max_health = maxi(new_health, 1)
 	health = max_health
 	hatch_options.clear()
@@ -32,6 +34,7 @@ func configure(new_health: int, new_hatch_options: Array[String], parent_food: N
 		hatch_options.append(option)
 	hatch_timer = randf_range(3.0, 5.0)
 	food_parent = parent_food
+	parent_name = parent
 
 func _ready() -> void:
 	input_pickable = true
@@ -143,6 +146,8 @@ func _update_hatch(delta: float) -> void:
 		var behavior_name := "Normal"
 		if not hatch_options.is_empty():
 			behavior_name = hatch_options.pick_random()
+		if parent_name == "Boss" and randf() <= KNIGHT_GUARD_HATCH_CHANCE:
+			behavior_name = "KnightGuard"
 		hatched.emit(global_position, behavior_name)
 		queue_free()
 		return
