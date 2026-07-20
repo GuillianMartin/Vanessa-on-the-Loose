@@ -1,0 +1,348 @@
+[gd_scene format=3 uid="uid://b2e08e38fgbvu"]
+
+[ext_resource type="Texture2D" uid="uid://cc6p8kf8qy3ph" path="res://assets/ui_container/stats_container.png" id="1_stats"]
+[ext_resource type="Texture2D" uid="uid://cgci6k1jguflx" path="res://assets/ui_container/boost_container.png" id="2_boost"]
+
+[node name="HUD" type="CanvasLayer" unique_id=1897086362]
+layer = 100
+
+[node name="TopBar" type="Control" parent="." unique_id=1835400281]
+layout_mode = 3
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 54.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Background" type="TextureRect" parent="TopBar" unique_id=340205282]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_stats")
+expand_mode = 1
+
+[node name="Day" type="Label" parent="TopBar" unique_id=668421747]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 8.0
+offset_right = 94.0
+offset_bottom = 40.0
+text = "Day 1"
+
+[node name="Market" type="Label" parent="TopBar" unique_id=943637758]
+layout_mode = 0
+offset_left = 88.0
+offset_top = 8.0
+offset_right = 273.0
+offset_bottom = 40.0
+text = "Market"
+
+[node name="Money" type="Label" parent="TopBar" unique_id=1912349432]
+layout_mode = 0
+offset_left = 904.0
+offset_top = 8.0
+offset_right = 1016.0
+offset_bottom = 40.0
+text = "Money: ₱0"
+horizontal_alignment = 1
+
+[node name="Reputation" type="Label" parent="TopBar" unique_id=1129710710]
+layout_mode = 0
+offset_left = 816.0
+offset_top = 8.0
+offset_right = 902.0
+offset_bottom = 40.0
+text = "Rep: 100"
+horizontal_alignment = 1
+
+[node name="Satisfaction" type="Label" parent="TopBar" unique_id=143232849]
+layout_mode = 0
+offset_left = 720.0
+offset_top = 8.0
+offset_right = 802.0
+offset_bottom = 40.0
+text = "Sat: 100"
+horizontal_alignment = 1
+
+[node name="Flies" type="Label" parent="TopBar" unique_id=2025165867]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 64.0
+offset_right = 92.0
+offset_bottom = 96.0
+text = "Flies: 0"
+
+[node name="Swatted" type="Label" parent="TopBar" unique_id=1581941977]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 96.0
+offset_right = 112.0
+offset_bottom = 128.0
+text = "Swatted: 0"
+
+[node name="MatchTimer" type="Label" parent="TopBar" unique_id=2044131657]
+layout_mode = 0
+offset_left = 528.0
+offset_top = 8.0
+offset_right = 620.0
+offset_bottom = 40.0
+text = "Time: 5:00"
+
+[node name="Rush" type="Label" parent="TopBar" unique_id=675769832]
+layout_mode = 0
+offset_left = 304.0
+offset_top = 8.0
+offset_right = 382.0
+offset_bottom = 40.0
+horizontal_alignment = 1
+
+[node name="EnergyLabel" type="Label" parent="TopBar" unique_id=1903189590]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -608.0
+offset_top = 616.0
+offset_right = -550.0
+offset_bottom = 648.0
+grow_horizontal = 0
+text = "Energy"
+
+[node name="EnergyBar" type="ProgressBar" parent="TopBar" unique_id=623566169]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -704.0
+offset_top = 600.0
+offset_right = -448.0
+offset_bottom = 614.0
+grow_horizontal = 0
+value = 100.0
+show_percentage = false
+
+[node name="DurationList" type="HBoxContainer" parent="." unique_id=1472732879]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -380.0
+offset_top = 58.0
+offset_right = -12.0
+offset_bottom = 110.0
+grow_horizontal = 0
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="BossHealth" type="HBoxContainer" parent="." unique_id=48439006]
+visible = false
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 360.0
+offset_top = 58.0
+offset_right = -360.0
+offset_bottom = 88.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Label" type="Label" parent="BossHealth" unique_id=4674296]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "Boss Lives: 5/5"
+
+[node name="Bar" type="ProgressBar" parent="BossHealth" unique_id=1391488058]
+custom_minimum_size = Vector2(260, 14)
+layout_mode = 2
+max_value = 10.0
+value = 10.0
+show_percentage = false
+
+[node name="UpgradePanel" type="Control" parent="." unique_id=323840535]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -104.0
+offset_right = 426.0
+offset_bottom = 4.0
+grow_vertical = 0
+
+[node name="Background" type="TextureRect" parent="UpgradePanel" unique_id=955582665]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 8.0
+offset_right = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_boost")
+expand_mode = 1
+flip_h = true
+
+[node name="Title" type="Label" parent="UpgradePanel" unique_id=1203189168]
+layout_mode = 0
+offset_left = 8.0
+offset_top = -16.0
+offset_right = 154.0
+offset_bottom = 7.0
+text = "Upgrades"
+
+[node name="DamageCost" type="Label" parent="UpgradePanel" unique_id=427568755]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 16.0
+offset_right = 126.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="Damage" type="Button" parent="UpgradePanel" unique_id=1627964702]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 40.0
+offset_right = 126.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="SpeedCost" type="Label" parent="UpgradePanel" unique_id=1019853522]
+layout_mode = 0
+offset_left = 152.0
+offset_top = 16.0
+offset_right = 246.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="Speed" type="Button" parent="UpgradePanel" unique_id=787662827]
+layout_mode = 0
+offset_left = 152.0
+offset_top = 40.0
+offset_right = 246.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="EnergyCost" type="Label" parent="UpgradePanel" unique_id=1368722111]
+layout_mode = 0
+offset_left = 272.0
+offset_top = 16.0
+offset_right = 366.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="Energy" type="Button" parent="UpgradePanel" unique_id=1897996369]
+layout_mode = 0
+offset_left = 272.0
+offset_top = 40.0
+offset_right = 366.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="SkillPanel" type="Control" parent="." unique_id=645170795]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -424.0
+offset_top = -104.0
+offset_right = 2.0
+offset_bottom = 4.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Background" type="TextureRect" parent="SkillPanel" unique_id=1580030973]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -16.0
+offset_top = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_boost")
+expand_mode = 1
+
+[node name="Title" type="Label" parent="SkillPanel" unique_id=331769921]
+layout_mode = 0
+offset_left = 272.0
+offset_top = -16.0
+offset_right = 418.0
+offset_bottom = 7.0
+text = "Skills"
+horizontal_alignment = 2
+
+[node name="MegaSwatterCost" type="Label" parent="SkillPanel" unique_id=1567203883]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 108.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="MegaSwatter" type="Button" parent="SkillPanel" unique_id=460849573]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 40.0
+offset_right = 108.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="InstantEnergyCost" type="Label" parent="SkillPanel" unique_id=1416779209]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 16.0
+offset_right = 212.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="InstantEnergy" type="Button" parent="SkillPanel" unique_id=533025983]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 40.0
+offset_right = 212.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="FreshGoodsCost" type="Label" parent="SkillPanel" unique_id=1275081318]
+layout_mode = 0
+offset_left = 224.0
+offset_top = 16.0
+offset_right = 316.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="FreshGoods" type="Button" parent="SkillPanel" unique_id=1479038211]
+layout_mode = 0
+offset_left = 224.0
+offset_top = 40.0
+offset_right = 316.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true
+
+[node name="BigFanCost" type="Label" parent="SkillPanel" unique_id=1816694346]
+layout_mode = 0
+offset_left = 328.0
+offset_top = 16.0
+offset_right = 420.0
+offset_bottom = 39.0
+horizontal_alignment = 1
+
+[node name="BigFan" type="Button" parent="SkillPanel" unique_id=1905450417]
+layout_mode = 0
+offset_left = 328.0
+offset_top = 40.0
+offset_right = 420.0
+offset_bottom = 91.0
+icon_alignment = 1
+expand_icon = true

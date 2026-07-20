@@ -15,7 +15,7 @@ const KNIGHT_PROTECT_SPEED := 900.0
 const KNIGHT_HITBOX_RADIUS := 40.0
 const KNIGHT_IMAGE_SCALE := Vector2(0.55, 0.55)
 const KNIGHT_ROAM_RADIUS := 180.0
-const KNIGHT_PROTECT_RADIUS := 70.0
+const KNIGHT_PROTECT_RADIUS := 55.0
 const KNIGHT_BLINK_DURATION := 0.28
 
 var health := 1
@@ -30,6 +30,8 @@ var is_blinking := false
 var is_dying := false
 var is_invulnerable := false
 var is_protecting := false
+var fan_timer := 0.0
+var fan_direction := 0.0
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
@@ -97,6 +99,8 @@ func _process(delta: float) -> void:
 
 	if is_blinking:
 		_animate_blink(delta)
+	elif fan_timer > 0.0:
+		_process_fan(delta)
 	else:
 		_animate_roam(delta)
 		if is_protecting:
@@ -119,6 +123,17 @@ func _protect(delta: float) -> void:
 	var steering := (orbit_target - global_position).normalized() * KNIGHT_PROTECT_SPEED
 	velocity = velocity.lerp(steering, 10.0 * delta)
 	position += velocity * delta
+	_update_sprite_direction()
+	_keep_inside_bounds()
+
+func apply_big_fan(direction: float, _target_x: float, strength: float, duration: float = 1.4) -> void:
+	fan_timer = maxf(duration, 0.0)
+	fan_direction = direction
+	velocity = Vector2(fan_direction * strength, 0.0)
+
+func _process_fan(delta: float) -> void:
+	fan_timer -= delta
+	position += Vector2(fan_direction * KNIGHT_PROTECT_SPEED, velocity.y * 0.4) * delta
 	_update_sprite_direction()
 	_keep_inside_bounds()
 
@@ -234,6 +249,14 @@ func set_invulnerable(value: bool) -> void:
 	is_protecting = value
 	if is_protecting:
 		orbit_angle = randf_range(0.0, TAU)
+		play_blink()
+
+func intercept_attack(boss_position: Vector2, amount: int) -> void:
+	if is_dying:
+		return
+	global_position = boss_position
+	play_blink()
+	take_damage(amount)
 
 func _get_swatter() -> Node:
 	var swatters := get_tree().get_nodes_in_group("swatters")

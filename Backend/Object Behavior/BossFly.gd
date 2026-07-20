@@ -422,6 +422,10 @@ static func get_guard_health() -> int:
 func take_damage(_amount: int) -> void:
 	if is_invulnerable or is_dying:
 		return
+	var game_root := get_tree().current_scene
+	if game_root != null and game_root.has_method("try_intercept_boss_hit"):
+		if bool(game_root.call("try_intercept_boss_hit", self, _amount)):
+			return
 
 	current_health -= _amount
 	guard_blink_requested.emit()

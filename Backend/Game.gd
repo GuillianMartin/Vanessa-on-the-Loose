@@ -17,6 +17,8 @@ const RESULT_CONTAINER_TEXTURE := preload("res://assets/ui_container/result_cont
 const RESULT_FLIP_TEXTURE := preload("res://assets/ui_container/result_flip.png")
 const FINANCIAL_BUTTON_TEXTURE := preload("res://assets/buttons/financial_button.png")
 const START_BUTTON_TEXTURE := preload("res://assets/buttons/start_button.png")
+const HUD_SCENE := preload("res://Objects/HUD.tscn")
+const BOSS_GUARD_INTERCEPT_CHANCE := 0.35
 
 const BASE_FOOD_COUNT := 8
 const TOP_SAFE_AREA := 72.0
@@ -113,11 +115,17 @@ var match_timer_label: Label
 var rush_label: Label
 var upgrade_label: Label
 var upgrade_buttons := {}
+var upgrade_cost_labels := {}
 var skill_label: Label
 var skill_buttons := {}
+var skill_cost_labels := {}
 var skill_timers := {}
+var skill_duration_list: HBoxContainer
 var big_fan_popup: Control
 var big_fan_choice := "left"
+var big_fan_sprite: Sprite2D
+var big_fan_direction := 0.0
+var fan_camera_offset := Vector2.ZERO
 var default_menu_panel: PanelContainer
 var result_art_root: Control
 var result_board: Control
@@ -153,12 +161,14 @@ func _ready() -> void:
 	randomize()
 	base_scene_position = position
 	_build_game_nodes()
+	big_fan_sprite = get_node_or_null("BigFanIcon") as Sprite2D
 	_build_swatter()
 	_build_hud()
 	_build_menu()
 	_show_start_menu()
 
 func _process(delta: float) -> void:
+	_update_big_fan_effect(delta)
 	_update_screen_shake(delta)
 	if not day_active:
 		return
@@ -261,6 +271,25 @@ func _build_swatter() -> void:
 	swatter_layer.add_child(swatter_sprite)
 
 func _build_hud() -> void:
+	hud_layer = HUD_SCENE.instantiate()
+	add_child(hud_layer)
+	day_label = hud_layer.get_node("TopBar/Day")
+	market_label = hud_layer.get_node("TopBar/Market")
+	money_label = hud_layer.get_node("TopBar/Money")
+	reputation_label = hud_layer.get_node("TopBar/Reputation")
+	satisfaction_label = hud_layer.get_node("TopBar/Satisfaction")
+	flies_label = hud_layer.get_node("TopBar/Flies")
+	swatted_label = hud_layer.get_node("TopBar/Swatted")
+	match_timer_label = hud_layer.get_node("TopBar/MatchTimer")
+	rush_label = hud_layer.get_node("TopBar/Rush")
+	swatter_energy_label = hud_layer.get_node("TopBar/EnergyLabel")
+	swatter_energy_bar = hud_layer.get_node("TopBar/EnergyBar")
+	boss_health_label = hud_layer.get_node("BossHealth/Label")
+	boss_health_bar = hud_layer.get_node("BossHealth/Bar")
+	skill_duration_list = hud_layer.get_node("DurationList")
+	_build_upgrade_panel()
+	_build_skill_panel()
+	return
 	hud_layer = CanvasLayer.new()
 	hud_layer.name = "HUD"
 	add_child(hud_layer)
@@ -355,6 +384,17 @@ func _make_hud_label(text: String, width: float) -> Label:
 	return label
 
 func _build_upgrade_panel() -> void:
+	upgrade_label = hud_layer.get_node("UpgradePanel/Title")
+	upgrade_buttons = {}
+	upgrade_cost_labels = {}
+	for upgrade_name in ["damage", "speed", "energy"]:
+		var node_name: String = str(upgrade_name).capitalize()
+		var scene_button: Button = hud_layer.get_node("UpgradePanel/" + node_name)
+		var cost_label: Label = hud_layer.get_node("UpgradePanel/" + node_name + "Cost")
+		scene_button.pressed.connect(_on_upgrade_pressed.bind(upgrade_name))
+		upgrade_buttons[upgrade_name] = scene_button
+		upgrade_cost_labels[upgrade_name] = cost_label
+	return
 	var panel := PanelContainer.new()
 	panel.name = "UpgradePanel"
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -394,9 +434,29 @@ func _build_upgrade_panel() -> void:
 		upgrade_buttons[upgrade_name] = button
 
 func _build_skill_panel() -> void:
+	skill_label = hud_layer.get_node("SkillPanel/Title")
 	var definitions := BUY_SKILLS.get_skill_definitions()
 	skill_timers = {}
 	skill_buttons = {}
+	skill_cost_labels = {}
+	var scene_node_names := {
+		"mega_swatter": "MegaSwatter",
+		"instant_energy": "InstantEnergy",
+		"fresh_goods": "FreshGoods",
+		"big_fan": "BigFan",
+	}
+	for skill_id in definitions.keys():
+		var def: Dictionary = definitions[skill_id]
+		var node_name: String = str(scene_node_names[skill_id])
+		var scene_button: Button = hud_layer.get_node("SkillPanel/" + node_name)
+		var cost_label: Label = hud_layer.get_node("SkillPanel/" + node_name + "Cost")
+		scene_button.pressed.connect(_on_skill_pressed.bind(skill_id))
+		scene_button.tooltip_text = str(def.get("description", ""))
+		skill_buttons[skill_id] = scene_button
+		skill_cost_labels[skill_id] = cost_label
+		skill_timers[skill_id] = 0.0
+	_build_big_fan_popup()
+	return
 
 	var panel := PanelContainer.new()
 	panel.name = "SkillPanel"
@@ -1280,6 +1340,18 @@ func _on_boss_guard_protect_requested(active: bool) -> void:
 func _on_knight_guard_died(_guard: Area2D) -> void:
 	active_knight_guards = active_knight_guards.filter(func(g): return is_instance_valid(g) and g != _guard)
 
+func try_intercept_boss_hit(boss: Node2D, damage: int) -> bool:
+	if boss == null or active_knight_guards.is_empty() or randf() > BOSS_GUARD_INTERCEPT_CHANCE:
+		return false
+	var alive_guards: Array[Node2D] = []
+	for guard in active_knight_guards:
+		if is_instance_valid(guard) and not guard.is_queued_for_deletion() and guard.has_method("intercept_attack"):
+			alive_guards.append(guard)
+	if alive_guards.is_empty():
+		return false
+	alive_guards.pick_random().call("intercept_attack", boss.global_position, damage)
+	return true
+
 func _on_boss_died(boss_node: Node) -> void:
 	if not day_active:
 		return
@@ -1421,6 +1493,7 @@ func _update_hud() -> void:
 
 	_update_upgrade_buttons()
 	_update_skill_buttons()
+	_update_skill_duration_list(BUY_SKILLS.get_skill_definitions())
 
 func _set_boss_health_visible(visible: bool) -> void:
 	if boss_health_bar == null:
@@ -1441,7 +1514,10 @@ func _update_upgrade_buttons() -> void:
 		var cost := int(swatter_entity.call("get_upgrade_cost", upgrade_name))
 		var icon_texture := load(icon_paths[upgrade_name]) as Texture2D
 		button.icon = icon_texture
-		button.text = "₱%d" % cost
+		button.text = ""
+		var cost_label := upgrade_cost_labels.get(upgrade_name) as Label
+		if cost_label:
+			cost_label.text = "₱%d" % cost
 		button.disabled = not _can_afford_upgrade(cost) or not day_active
 
 func _update_skill_buttons() -> void:
@@ -1455,13 +1531,40 @@ func _update_skill_buttons() -> void:
 		var cost := int(def.get("cost", 0))
 		var icon_texture := load(str(def.get("icon", ""))) as Texture2D
 		button.icon = icon_texture
+		var cost_label := skill_cost_labels.get(skill_id) as Label
+		if cost_label:
+			cost_label.text = "₱%d" % cost
 		var remaining := float(skill_timers.get(skill_id, 0.0))
 		if remaining > 0.0:
-			button.text = "%.0fs" % remaining
+			button.text = ""
 			button.disabled = true
 		else:
-			button.text = "₱%d" % cost
+			button.text = ""
 			button.disabled = not _can_afford_skill(cost) or not day_active
+
+func _update_skill_duration_list(definitions: Dictionary) -> void:
+	if skill_duration_list == null:
+		return
+	for child in skill_duration_list.get_children():
+		child.queue_free()
+	for skill_id in definitions.keys():
+		var remaining := float(skill_timers.get(skill_id, 0.0))
+		if remaining <= 0.0:
+			continue
+		var def: Dictionary = definitions[skill_id]
+		var item := VBoxContainer.new()
+		item.alignment = BoxContainer.ALIGNMENT_CENTER
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(34, 34)
+		icon.texture = load(str(def.get("icon", ""))) as Texture2D
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		item.add_child(icon)
+		var duration := Label.new()
+		duration.text = "%.1fs" % remaining
+		duration.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		item.add_child(duration)
+		skill_duration_list.add_child(item)
 
 func _can_afford_skill(cost: int) -> bool:
 	return current_money >= cost
@@ -1612,21 +1715,33 @@ func _on_big_fan_choice(side: String) -> void:
 	_update_hud()
 
 func _activate_big_fan(side: String) -> void:
+	big_fan_direction = -1.0 if side == "left" else 1.0
+	if big_fan_sprite != null:
+		var viewport_size := get_viewport_rect().size
+		big_fan_sprite.position = Vector2(viewport_size.x if side == "left" else 0.0, viewport_size.y * 0.5)
+		big_fan_sprite.visible = true
+
+func _update_big_fan_effect(delta: float) -> void:
+	var remaining := float(skill_timers.get("big_fan", 0.0))
+	if remaining <= 0.0:
+		fan_camera_offset = Vector2.ZERO
+		if big_fan_sprite != null:
+			big_fan_sprite.visible = false
+		return
+	if big_fan_sprite != null:
+		big_fan_sprite.visible = true
+		big_fan_sprite.rotation += delta * TAU * 2.0
+	var pulse := sin(Time.get_ticks_msec() * 0.012) * 3.0
+	fan_camera_offset = Vector2(-big_fan_direction * 10.0, pulse)
 	if fly_container == null:
 		return
-
 	var bounds := _get_fly_bounds()
-	var direction := -1.0 if side == "left" else 1.0
-	var target_x := bounds.position.x + 30.0 if side == "left" else bounds.end.x - 30.0
-	var fan_strength := 900.0
-
+	var target_x := bounds.position.x + 30.0 if big_fan_direction < 0.0 else bounds.end.x - 30.0
 	for fly in fly_container.get_children():
-		if not is_instance_valid(fly) or fly.is_queued_for_deletion():
-			continue
-		if fly.is_in_group("boss_flies") or fly.is_in_group("knight_guards"):
+		if not is_instance_valid(fly) or fly.is_queued_for_deletion() or fly.is_in_group("boss_flies"):
 			continue
 		if fly.has_method("apply_big_fan"):
-			fly.call("apply_big_fan", direction, target_x, fan_strength)
+			fly.call("apply_big_fan", big_fan_direction, target_x, 900.0, remaining)
 
 func _update_skills(delta: float) -> void:
 	if swatter_entity == null:
@@ -1670,6 +1785,10 @@ func _reset_skill_state() -> void:
 	_set_food_protection(false)
 	if big_fan_popup != null:
 		big_fan_popup.visible = false
+	big_fan_direction = 0.0
+	fan_camera_offset = Vector2.ZERO
+	if big_fan_sprite != null:
+		big_fan_sprite.visible = false
 	_update_skill_buttons()
 
 func _update_rush_hour(delta: float) -> void:
@@ -1925,17 +2044,17 @@ func _start_screen_shake(duration: float, strength: float) -> void:
 
 func _update_screen_shake(delta: float) -> void:
 	if screen_shake_timer <= 0.0:
-		position = base_scene_position
+		position = base_scene_position + fan_camera_offset
 		return
 
 	screen_shake_timer = maxf(screen_shake_timer - delta, 0.0)
 	var fade := screen_shake_timer / maxf(screen_shake_duration, 0.001)
-	position = base_scene_position + Vector2(
+	position = base_scene_position + fan_camera_offset + Vector2(
 		randf_range(-screen_shake_strength, screen_shake_strength) * fade,
 		randf_range(-screen_shake_strength, screen_shake_strength) * fade
 	)
 	if screen_shake_timer <= 0.0:
-		position = base_scene_position
+		position = base_scene_position + fan_camera_offset
 
 func _get_active_food_count(excluded_food: Node = null) -> int:
 	if food_container == null:

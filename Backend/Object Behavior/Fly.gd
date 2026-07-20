@@ -474,8 +474,8 @@ func _is_food_valid(food: Variant) -> bool:
 
 	return (food as Node2D).is_inside_tree()
 
-func apply_big_fan(direction: float, target_x: float, strength: float) -> void:
-	fan_timer = 1.4
+func apply_big_fan(direction: float, target_x: float, strength: float, duration: float = 1.4) -> void:
+	fan_timer = maxf(duration, 0.0)
 	fan_direction = direction
 	fan_target_x = target_x
 	target_food = null
@@ -495,11 +495,6 @@ func _process_fan(delta: float) -> void:
 	position += velocity * delta
 	_update_sprite_direction()
 	_keep_inside_bounds()
-
-	if (fan_direction < 0.0 and global_position.x <= fan_target_x) or (fan_direction > 0.0 and global_position.x >= fan_target_x):
-		velocity = Vector2(fan_direction * base_speed * 0.6, randf_range(-base_speed * 0.3, base_speed * 0.3))
-		fan_timer = 0.0
-		return
 
 	if fan_timer <= 0.0:
 		velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * base_speed

@@ -78,7 +78,8 @@ static func get_food_types() -> Array[FoodConfig]:
 
 static func _food_config_from_item(category: String, food_item: Dictionary) -> FoodConfig:
 	var attributes := food_item.get("attributes", {}) as Dictionary
-	var base_market_price := float(attributes.get("base_price", 0.0))
+	# Keep incomplete food definitions from spawning as immediately spoiled or worthless.
+	var base_market_price := maxf(float(attributes.get("base_price", 0.0)), 1.0)
 	return FoodConfig.new(
 		str(food_item.get("name", "")),
 		category,
@@ -87,8 +88,8 @@ static func _food_config_from_item(category: String, food_item: Dictionary) -> F
 		food_item["critical"].texture,
 		float(attributes.get("visual_size", 0.0)),
 		float(attributes.get("food_radius", 0.0)),
-		float(attributes.get("max_freshness", 0.0)),
-		float(attributes.get("spoil_rate", 0.0)),
+		maxf(float(attributes.get("max_freshness", 0.0)), 1.0),
+		maxf(float(attributes.get("spoil_rate", 0.0)), 0.01),
 		int(attributes.get("nutrition", 0)),
 		base_market_price,
 		ceilf(base_market_price * 1.32),
