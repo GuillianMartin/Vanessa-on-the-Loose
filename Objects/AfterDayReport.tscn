@@ -1,0 +1,120 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/ui_container/result_container.png" id="1_board"]
+[ext_resource type="Texture2D" path="res://assets/buttons/financial_button.png" id="2_financial"]
+[ext_resource type="Texture2D" path="res://assets/buttons/start_button.png" id="3_start"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_financial_normal"]
+atlas = ExtResource("2_financial")
+region = Rect2(0, 0, 330, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_financial_hover"]
+atlas = ExtResource("2_financial")
+region = Rect2(330, 0, 330, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_start_normal"]
+atlas = ExtResource("3_start")
+region = Rect2(0, 0, 330, 70)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_start_hover"]
+atlas = ExtResource("3_start")
+region = Rect2(330, 0, 330, 70)
+
+[node name="AfterDayReport" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Board" type="Control" parent="Center"]
+custom_minimum_size = Vector2(723, 483)
+layout_mode = 2
+pivot_offset = Vector2(361.5, 241.5)
+
+[node name="Background" type="TextureRect" parent="Center/Board"]
+layout_mode = 0
+offset_right = 723.0
+offset_bottom = 483.0
+texture = ExtResource("1_board")
+expand_mode = 1
+stretch_mode = 0
+mouse_filter = 2
+
+[node name="MotionRoot" type="Control" parent="Center/Board"]
+layout_mode = 0
+offset_right = 723.0
+offset_bottom = 483.0
+clip_contents = true
+
+[node name="TextMargin" type="MarginContainer" parent="Center/Board/MotionRoot"]
+layout_mode = 0
+offset_left = 182.0
+offset_top = 62.0
+offset_right = 659.0
+offset_bottom = 356.0
+clip_contents = true
+
+[node name="Content" type="VBoxContainer" parent="Center/Board/MotionRoot/TextMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="Title" type="Label" parent="Center/Board/MotionRoot/TextMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.364706, 0.215686, 0.117647, 1)
+theme_override_font_sizes/font_size = 20
+text = "Day Complete"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Center/Board/MotionRoot/TextMargin/Content"]
+custom_minimum_size = Vector2(477, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.364706, 0.215686, 0.117647, 1)
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 3
+
+[node name="Warning" type="Label" parent="Center/Board/MotionRoot/TextMargin/Content"]
+custom_minimum_size = Vector2(477, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.364706, 0.215686, 0.117647, 1)
+theme_override_font_sizes/font_size = 18
+visible = false
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="FinancialButton" type="TextureButton" parent="Center/Board"]
+layout_mode = 0
+offset_left = 275.0
+offset_top = 390.0
+offset_right = 605.0
+offset_bottom = 460.0
+pivot_offset = Vector2(165, 35)
+texture_normal = SubResource("AtlasTexture_financial_normal")
+texture_hover = SubResource("AtlasTexture_financial_hover")
+texture_pressed = SubResource("AtlasTexture_financial_hover")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="StartButton" type="TextureButton" parent="Center/Board"]
+layout_mode = 0
+offset_left = 275.0
+offset_top = 390.0
+offset_right = 605.0
+offset_bottom = 460.0
+pivot_offset = Vector2(165, 35)
+texture_normal = SubResource("AtlasTexture_start_normal")
+texture_hover = SubResource("AtlasTexture_start_hover")
+texture_pressed = SubResource("AtlasTexture_start_hover")
+ignore_texture_size = true
+stretch_mode = 0
+visible = false
