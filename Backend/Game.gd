@@ -15,8 +15,12 @@ const SWATTER_DEFAULT_TEXTURE := preload("res://assets/weapon/swatter/swatter_de
 const SWATTER_ATTACK_TEXTURE := preload("res://assets/weapon/swatter/swatter_attack.png")
 const RESULT_CONTAINER_TEXTURE := preload("res://assets/ui_container/result_container.png")
 const RESULT_FLIP_TEXTURE := preload("res://assets/ui_container/result_flip.png")
+const BOSS_BG_TOP_TEXTURE := preload("res://assets/ui_container/boss_bg1.png")
+const BOSS_BG_BOTTOM_TEXTURE := preload("res://assets/ui_container/boss_bg2.png")
+const BOSS_WARNING_CONTAINER_TEXTURE := preload("res://assets/ui_container/boss_warning_container.png")
 const FINANCIAL_BUTTON_TEXTURE := preload("res://assets/buttons/financial_button.png")
 const START_BUTTON_TEXTURE := preload("res://assets/buttons/start_button.png")
+const ENTER_BOSS_BUTTON_TEXTURE := preload("res://assets/buttons/enter_boss.png")
 const PAUSE_BUTTON_TEXTURE := preload("res://assets/buttons/pause.png")
 const QUIT_BUTTON_TEXTURE := preload("res://assets/buttons/quit_button.png")
 const RESUME_BUTTON_TEXTURE := preload("res://assets/buttons/resume_button.png")
@@ -35,6 +39,7 @@ const TOP_SAFE_AREA := 72.0
 const EDGE_PADDING := 30.0
 const FOOD_GAP := 1.0
 const FOOD_PLACEMENT_ATTEMPTS := 500
+const GAME_CANVAS_SIZE := Vector2(1152, 648)
 const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
@@ -49,6 +54,13 @@ const RESULT_TEXT_AREA_POSITION := Vector2(182, 62)
 const RESULT_TEXT_AREA_SIZE := Vector2(477, 294)
 const RESULT_BUTTON_POSITION := Vector2(275, 390)
 const RESULT_TEXT_COLOR := Color("#5D371E")
+const BOSS_WARNING_FRAME_SIZE := Vector2(1063, 570)
+const BOSS_WARNING_BUTTON_SIZE := Vector2(322, 37)
+const BOSS_SHUTTER_HALF_SIZE := Vector2(1152, 324)
+const BOSS_WARNING_TEXT_POSITION := Vector2(258, 154)
+const BOSS_WARNING_TEXT_SIZE := Vector2(548, 238)
+const BOSS_WARNING_BUTTON_POSITION := Vector2(370, 382)
+const BOSS_COUNTDOWN_FONT_SIZE := 118
 const GAME_OVER_FRAME_SIZE := Vector2(1152, 648)
 const GAME_OVER_BUTTON_FRAME_SIZE := Vector2(169, 143)
 const GAME_OVER_DATA_POSITION := Vector2(410, 266)
@@ -170,6 +182,15 @@ var result_body_label: Label
 var result_warning_label: Label
 var financial_button: TextureButton
 var result_start_button: TextureButton
+var boss_warning_root: Control
+var boss_warning_top: TextureRect
+var boss_warning_bottom: TextureRect
+var boss_warning_board: Control
+var boss_warning_content: VBoxContainer
+var boss_warning_title_label: Label
+var boss_warning_body_label: Label
+var boss_warning_hint_label: Label
+var boss_warning_enter_button: TextureButton
 var game_over_root: Control
 var game_over_background: TextureRect
 var game_over_fly: TextureRect
@@ -759,6 +780,7 @@ func _build_menu() -> void:
 	content.add_child(play_button)
 
 	_build_result_art_menu()
+	_build_boss_warning_menu()
 	_build_game_over_menu()
 
 func _build_result_art_menu() -> void:
@@ -946,11 +968,97 @@ func _get_result_flip_frame(frame_index: int) -> AtlasTexture:
 	texture.region = Rect2(RESULT_FRAME_SIZE.x * frame_index, 0, RESULT_FRAME_SIZE.x, RESULT_FRAME_SIZE.y)
 	return texture
 
+func _build_boss_warning_menu() -> void:
+	boss_warning_root = Control.new()
+	boss_warning_root.visible = false
+	boss_warning_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu_layer.add_child(boss_warning_root)
+
+	boss_warning_top = TextureRect.new()
+	boss_warning_top.texture = BOSS_BG_TOP_TEXTURE
+	boss_warning_top.position = Vector2(0, -BOSS_SHUTTER_HALF_SIZE.y)
+	boss_warning_top.size = BOSS_SHUTTER_HALF_SIZE
+	boss_warning_top.stretch_mode = TextureRect.STRETCH_SCALE
+	boss_warning_root.add_child(boss_warning_top)
+
+	boss_warning_bottom = TextureRect.new()
+	boss_warning_bottom.texture = BOSS_BG_BOTTOM_TEXTURE
+	boss_warning_bottom.position = Vector2(0, GAME_OVER_FRAME_SIZE.y)
+	boss_warning_bottom.size = BOSS_SHUTTER_HALF_SIZE
+	boss_warning_bottom.stretch_mode = TextureRect.STRETCH_SCALE
+	boss_warning_root.add_child(boss_warning_bottom)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	boss_warning_root.add_child(center)
+
+	boss_warning_board = Control.new()
+	boss_warning_board.custom_minimum_size = BOSS_WARNING_FRAME_SIZE
+	boss_warning_board.size = BOSS_WARNING_FRAME_SIZE
+	boss_warning_board.pivot_offset = BOSS_WARNING_FRAME_SIZE * 0.5
+	boss_warning_board.visible = false
+	center.add_child(boss_warning_board)
+
+	var board_texture := TextureRect.new()
+	board_texture.texture = BOSS_WARNING_CONTAINER_TEXTURE
+	board_texture.size = BOSS_WARNING_FRAME_SIZE
+	board_texture.stretch_mode = TextureRect.STRETCH_SCALE
+	boss_warning_board.add_child(board_texture)
+
+	var text_area := VBoxContainer.new()
+	boss_warning_content = text_area
+	text_area.position = BOSS_WARNING_TEXT_POSITION
+	text_area.size = BOSS_WARNING_TEXT_SIZE
+	text_area.clip_contents = true
+	text_area.alignment = BoxContainer.ALIGNMENT_CENTER
+	text_area.add_theme_constant_override("separation", 12)
+	boss_warning_board.add_child(text_area)
+
+	boss_warning_title_label = Label.new()
+	boss_warning_title_label.text = "BOSS WARNING"
+	boss_warning_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_warning_title_label.add_theme_font_override("font", JERSEY_FONT)
+	boss_warning_title_label.add_theme_font_size_override("font_size", 36)
+	boss_warning_title_label.add_theme_color_override("font_color", Color("#5D371E"))
+	text_area.add_child(boss_warning_title_label)
+
+	boss_warning_body_label = Label.new()
+	boss_warning_body_label.text = "A powerful Boss Fly awaits! Protect your market and survive the Boss Fight to continue.\n\nIt will be guarded by elite Knight Flies. Customers will still visit during the fight, so keep your reputation and satisfaction up."
+	boss_warning_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_warning_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	boss_warning_body_label.add_theme_font_override("font", PIXELIFY_FONT)
+	boss_warning_body_label.add_theme_font_size_override("font_size", 18)
+	boss_warning_body_label.add_theme_color_override("font_color", Color("#5D371E"))
+	boss_warning_body_label.custom_minimum_size = Vector2(BOSS_WARNING_TEXT_SIZE.x, 0)
+	text_area.add_child(boss_warning_body_label)
+
+	boss_warning_hint_label = Label.new()
+	boss_warning_hint_label.text = "Boss Fight incoming - prepare your swatter!"
+	boss_warning_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_warning_hint_label.add_theme_font_override("font", PIXELIFY_FONT)
+	boss_warning_hint_label.add_theme_font_size_override("font_size", 17)
+	boss_warning_hint_label.add_theme_color_override("font_color", Color("#B62A19"))
+	text_area.add_child(boss_warning_hint_label)
+
+	boss_warning_enter_button = TextureButton.new()
+	boss_warning_enter_button.texture_normal = ENTER_BOSS_BUTTON_TEXTURE
+	boss_warning_enter_button.texture_hover = ENTER_BOSS_BUTTON_TEXTURE
+	boss_warning_enter_button.texture_pressed = ENTER_BOSS_BUTTON_TEXTURE
+	boss_warning_enter_button.ignore_texture_size = true
+	boss_warning_enter_button.position = BOSS_WARNING_BUTTON_POSITION
+	boss_warning_enter_button.custom_minimum_size = BOSS_WARNING_BUTTON_SIZE
+	boss_warning_enter_button.size = BOSS_WARNING_BUTTON_SIZE
+	boss_warning_enter_button.pivot_offset = BOSS_WARNING_BUTTON_SIZE * 0.5
+	boss_warning_enter_button.pressed.connect(_on_menu_button_pressed)
+	boss_warning_board.add_child(boss_warning_enter_button)
+
 func _show_default_menu_panel() -> void:
 	if default_menu_panel:
 		default_menu_panel.visible = true
 	if result_art_root:
 		result_art_root.visible = false
+	if boss_warning_root:
+		boss_warning_root.visible = false
 	if game_over_root:
 		game_over_root.visible = false
 	result_transition_active = false
@@ -960,6 +1068,8 @@ func _show_result_art_panel() -> void:
 		default_menu_panel.visible = false
 	if result_art_root:
 		result_art_root.visible = true
+	if boss_warning_root:
+		boss_warning_root.visible = false
 	if game_over_root:
 		game_over_root.visible = false
 	if result_board:
@@ -975,8 +1085,20 @@ func _show_game_over_art_panel() -> void:
 		default_menu_panel.visible = false
 	if result_art_root:
 		result_art_root.visible = false
+	if boss_warning_root:
+		boss_warning_root.visible = false
 	if game_over_root:
 		game_over_root.visible = true
+
+func _show_boss_warning_art_panel() -> void:
+	if default_menu_panel:
+		default_menu_panel.visible = false
+	if result_art_root:
+		result_art_root.visible = false
+	if game_over_root:
+		game_over_root.visible = false
+	if boss_warning_root:
+		boss_warning_root.visible = true
 
 func _show_start_menu() -> void:
 	_set_gameplay_paused(false)
@@ -1075,8 +1197,7 @@ func _on_menu_button_pressed() -> void:
 		"pre_day_forecast":
 			_play_start_day_button_animation()
 		"boss_warning":
-			boss_warning_shown = true
-			_start_day()
+			_play_enter_boss_button_animation()
 		"start", "game_over":
 			_start_new_run()
 		_:
@@ -1096,7 +1217,7 @@ func _show_boss_warning_screen() -> void:
 	_clear_flies()
 	_clear_food()
 	_clear_customers()
-	_show_default_menu_panel()
+	_show_boss_warning_art_panel()
 	menu_title.text = "⚠ BOSS WARNING ⚠"
 	result_label.text = "A powerful Boss Fly awaits! Protect your market and survive the Boss Fight to continue.\n\nIt will be guarded by elite Knight Flies. Customers will still visit during the fight, so keep your reputation and satisfaction up."
 	if forecast_warning_label:
@@ -1104,6 +1225,7 @@ func _show_boss_warning_screen() -> void:
 		forecast_warning_label.text = "Boss Fight incoming — prepare your swatter!"
 		forecast_warning_label.add_theme_color_override("font_color", Color(1.0, 0.12, 0.08))
 	play_button.text = "Enter Boss Fight"
+	_play_boss_warning_intro()
 
 func _start_new_run() -> void:
 	market_day = 1
@@ -1516,6 +1638,165 @@ func _play_start_day_button_animation() -> void:
 		result_start_button.disabled = false
 	result_transition_active = false
 	_start_day()
+
+func _play_enter_boss_button_animation() -> void:
+	result_transition_active = true
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = true
+	await _play_boss_warning_exit()
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = false
+	boss_warning_shown = true
+	await _play_boss_start_countdown()
+	result_transition_active = false
+	_start_day()
+
+func _play_boss_warning_exit() -> void:
+	if boss_warning_root == null or boss_warning_top == null or boss_warning_bottom == null or boss_warning_board == null:
+		return
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	if boss_warning_content:
+		content_tween.tween_property(boss_warning_content, "position", BOSS_WARNING_TEXT_POSITION + Vector2(0, 34), 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		content_tween.tween_property(boss_warning_content, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if boss_warning_enter_button:
+		content_tween.tween_property(boss_warning_enter_button, "scale", Vector2(1.08, 1.08), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_enter_button, "scale", Vector2.ZERO, 0.18).set_delay(0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		content_tween.tween_property(boss_warning_enter_button, "modulate:a", 0.0, 0.18).set_delay(0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await content_tween.finished
+
+	var board_tween := create_tween()
+	board_tween.set_parallel(true)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2(1.08, 1.08), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2.ZERO, 0.26).set_delay(0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	board_tween.tween_property(boss_warning_board, "modulate:a", 0.0, 0.22).set_delay(0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await board_tween.finished
+
+	var shutter_tween := create_tween()
+	shutter_tween.set_parallel(true)
+	shutter_tween.tween_property(boss_warning_top, "position", Vector2(0, -BOSS_SHUTTER_HALF_SIZE.y), 0.64).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	shutter_tween.tween_property(boss_warning_bottom, "position", Vector2(0, GAME_OVER_FRAME_SIZE.y), 0.64).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await shutter_tween.finished
+	boss_warning_root.visible = false
+
+func _play_boss_start_countdown() -> void:
+	if menu_layer == null:
+		return
+
+	var countdown_root := Control.new()
+	countdown_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	countdown_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	menu_layer.add_child(countdown_root)
+
+	var dimmer := ColorRect.new()
+	dimmer.color = Color(0.0, 0.0, 0.0, 0.38)
+	dimmer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	countdown_root.add_child(dimmer)
+
+	var word_label := Label.new()
+	word_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	word_label.size = GAME_CANVAS_SIZE
+	word_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	word_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	word_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	word_label.add_theme_font_override("font", JERSEY_FONT)
+	word_label.add_theme_font_size_override("font_size", BOSS_COUNTDOWN_FONT_SIZE)
+	word_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.75))
+	word_label.add_theme_constant_override("shadow_offset_x", 4)
+	word_label.add_theme_constant_override("shadow_offset_y", 4)
+	word_label.pivot_offset = GAME_CANVAS_SIZE * 0.5
+	countdown_root.add_child(word_label)
+
+	await _play_countdown_word(word_label, "READY", Color("#b0ed17"), false)
+	await _play_countdown_word(word_label, "SET", Color("#b0ed17"), false)
+	await _play_countdown_word(word_label, "SWAT", Color("#bd4a13"), true)
+
+	var fade_tween := create_tween()
+	fade_tween.tween_property(countdown_root, "modulate:a", 0.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await fade_tween.finished
+	countdown_root.queue_free()
+
+func _play_countdown_word(label: Label, word: String, color: Color, shake: bool) -> void:
+	label.text = word
+	label.add_theme_color_override("font_color", color)
+	label.position = Vector2.ZERO
+	label.scale = Vector2(0.2, 0.2)
+	label.modulate.a = 0.0
+
+	var pop_tween := create_tween()
+	pop_tween.set_parallel(true)
+	pop_tween.tween_property(label, "modulate:a", 1.0, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(label, "scale", Vector2(1.16, 1.16), 0.16).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	pop_tween.chain().tween_property(label, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await pop_tween.finished
+
+	if shake:
+		var shake_tween := create_tween()
+		shake_tween.tween_property(label, "position", Vector2(14, 0), 0.035)
+		shake_tween.tween_property(label, "position", Vector2(-12, 5), 0.035)
+		shake_tween.tween_property(label, "position", Vector2(8, -4), 0.035)
+		shake_tween.tween_property(label, "position", Vector2.ZERO, 0.05)
+		await shake_tween.finished
+
+	var out_tween := create_tween()
+	out_tween.tween_interval(0.18)
+	out_tween.tween_property(label, "modulate:a", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await out_tween.finished
+
+func _play_boss_warning_intro() -> void:
+	if boss_warning_root == null or boss_warning_top == null or boss_warning_bottom == null or boss_warning_board == null:
+		return
+
+	result_transition_active = true
+	boss_warning_root.position = Vector2.ZERO
+	boss_warning_top.position = Vector2(0, -BOSS_SHUTTER_HALF_SIZE.y)
+	boss_warning_bottom.position = Vector2(0, GAME_OVER_FRAME_SIZE.y)
+	boss_warning_board.visible = false
+	boss_warning_board.scale = Vector2(1.7, 1.7)
+	boss_warning_board.modulate.a = 0.0
+	if boss_warning_content:
+		boss_warning_content.position = BOSS_WARNING_TEXT_POSITION + Vector2(0, 30)
+		boss_warning_content.modulate.a = 0.0
+	if boss_warning_enter_button:
+		boss_warning_enter_button.position = BOSS_WARNING_BUTTON_POSITION + Vector2(0, 30)
+		boss_warning_enter_button.scale = Vector2.ONE
+		boss_warning_enter_button.modulate.a = 0.0
+		boss_warning_enter_button.disabled = true
+
+	var shutter_tween := create_tween()
+	shutter_tween.set_parallel(true)
+	shutter_tween.tween_property(boss_warning_top, "position", Vector2.ZERO, 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	shutter_tween.tween_property(boss_warning_bottom, "position", Vector2(0, BOSS_SHUTTER_HALF_SIZE.y), 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await shutter_tween.finished
+
+	var shake_tween := create_tween()
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(8, 0), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(-7, 3), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(5, -2), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2.ZERO, 0.055)
+	await shake_tween.finished
+
+	boss_warning_board.visible = true
+	var board_tween := create_tween()
+	board_tween.set_parallel(true)
+	board_tween.tween_property(boss_warning_board, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	board_tween.chain().tween_property(boss_warning_board, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await board_tween.finished
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	if boss_warning_content:
+		content_tween.tween_property(boss_warning_content, "position", BOSS_WARNING_TEXT_POSITION, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_content, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if boss_warning_enter_button:
+		content_tween.tween_property(boss_warning_enter_button, "position", BOSS_WARNING_BUTTON_POSITION, 0.34).set_delay(0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_enter_button, "modulate:a", 1.0, 0.34).set_delay(0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await content_tween.finished
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = false
+	result_transition_active = false
 
 func _play_bouncy_pop(target: Control, process_during_pause: bool = false) -> void:
 	target.scale = Vector2.ONE
