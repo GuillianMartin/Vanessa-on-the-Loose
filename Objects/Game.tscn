@@ -13,7 +13,7 @@
 [ext_resource type="Texture2D" uid="uid://bnltq4l5glutb" path="res://assets/background/Scene5/background_rainy.png" id="8_rainy"]
 [ext_resource type="Texture2D" uid="uid://cb7ol2ccuxedw" path="res://assets/background/Scene5/container_rainy.png" id="9_rainy"]
 [ext_resource type="Texture2D" uid="uid://c05a7a80luajw" path="res://assets/background/Scene4/container_night.png" id="10_j6kdu"]
-[ext_resource type="Texture2D" uid="uid://bckvnqdt7jxxs" path="res://assets/icon/Skills/big_fan.png" id="11_big_fan"]
+[ext_resource type="Texture2D" uid="uid://btrtw1tjn7rti" path="res://assets/icon/Skills/fan.png" id="14_xqwqu"]
 
 [node name="Game" type="Node2D" unique_id=1851167090]
 script = ExtResource("1_qn0m5")
@@ -108,4 +108,4 @@ stream = ExtResource("3_qn0m5")
 [node name="BigFanIcon" type="Sprite2D" parent="." unique_id=776306786]
 z_index = 90
 scale = Vector2(5, 5)
-texture = ExtResource("11_big_fan")
+texture = ExtResource("14_xqwqu")
