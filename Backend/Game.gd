@@ -1347,6 +1347,8 @@ func _complete_day() -> void:
 		return
 
 	boss_round_pending = _is_boss_day(market_day + 1)
+	if boss_round_pending:
+		boss_warning_shown = false
 	market_day += 1
 	next_day_forecast = generate_pre_day_forecast()
 	financial_reports_generated.emit(current_day_report, next_day_forecast)
