@@ -14,6 +14,7 @@ const EGG_FOOD_GROUP := "fly_eggs"
 const BOSS_EGG_HEALTH := 6
 const BOSS_EGG_COUNT := 1
 const BOSS_EGG_PARENT_NAME := "Boss"
+const BOSS_EGG_HATCH_OPTIONS: Array[String] = ["Normal", "Swarm", "Tank"]
 
 const STATE_FLYING := "flying"
 const STATE_EATING := "eating"
@@ -47,6 +48,7 @@ const KNOCKBACK_TIME := 0.0
 const KNOCKBACK_STRENGTH := 0.0
 const ATTACK_MIN_TIME := 3.8
 const ATTACK_MAX_TIME := 7.0
+const REVIVE_GRACE_TIME := 2.5
 const SHOCKWAVE_TRIGGER_FRAME := 5
 const POISON_TRIGGER_FRAME := 8
 const SHOCKWAVE_CUSTOMER_DAMAGE_RATIO := 0.35
@@ -57,11 +59,14 @@ var boss_assets: Dictionary = {}
 var movement_bounds := Rect2(Vector2.ZERO, Vector2(1152, 648))
 var velocity := Vector2.ZERO
 var target_food: Node2D
+var last_eaten_food: Node2D = null
 var target_refresh_timer := 0.0
 var bite_timer := 0.0
 var eating_time := 0.0
 var knockback_timer := 0.0
+var revive_grace_timer := 0.0
 var attack_cooldown := 0.0
+var shockwave_used_this_life := false
 
 var life_bar_count := BOSS_LIVES
 var current_health := BOSS_HEALTH_PER_BAR
@@ -123,6 +128,7 @@ func configure(bounds: Rect2, forced_life_bar_count: int = 0) -> void:
 
 func begin_boss_fight() -> void:
 	begin_with_summon = true
+	revive_grace_timer = REVIVE_GRACE_TIME
 	if is_node_ready():
 		_set_state(STATE_SUMMON, true)
 
@@ -209,6 +215,10 @@ func _process(delta: float) -> void:
 		return
 
 	if current_state == STATE_FLYING:
+		if revive_grace_timer > 0.0:
+			revive_grace_timer -= delta
+			_wander(delta)
+			return
 		_animate_state(delta, STATE_FLYING, FLYING_FRAME_TIME, true)
 	elif current_state == STATE_EATING:
 		_animate_state(delta, STATE_EATING, EATING_FRAME_TIME, true)
@@ -228,7 +238,7 @@ func _process(delta: float) -> void:
 		return
 
 	target_refresh_timer -= delta
-	if not _is_food_valid(target_food) or target_refresh_timer <= 0.0:
+	if not _is_food_valid(target_food):
 		target_food = _pick_food_target()
 		target_refresh_timer = TARGET_REFRESH_TIME
 
@@ -243,9 +253,10 @@ func _process_attack_state(delta: float) -> void:
 	var finished := _animate_state(delta, current_state, ATTACK_FRAME_TIME, false)
 	if current_state == STATE_SHOCKWAVE and not attack_effect_played and sprite.frame >= SHOCKWAVE_TRIGGER_FRAME:
 		attack_effect_played = true
+		shockwave_used_this_life = true
 		_teleport_randomly()
 		_play_shockwave_effect()
-		_damage_foods(0.2)
+		_damage_foods(0.1)
 		_damage_customers()
 		_shockwave_swatter_energy()
 		shockwave_released.emit(global_position)
@@ -258,6 +269,9 @@ func _process_attack_state(delta: float) -> void:
 
 	if finished:
 		attack_cooldown = randf_range(ATTACK_MIN_TIME, ATTACK_MAX_TIME)
+		if current_state in [STATE_POISON, STATE_SHOCKWAVE, STATE_SUMMON]:
+			target_food = null
+			target_refresh_timer = 0.0
 		_set_state(STATE_FLYING, true)
 
 func _process_attack_cooldown(delta: float) -> void:
@@ -266,7 +280,7 @@ func _process_attack_cooldown(delta: float) -> void:
 		return
 
 	var choices: Array[String] = []
-	if randf() <= SHOCKWAVE_ATTACK_CHANCE:
+	if not shockwave_used_this_life and randf() <= SHOCKWAVE_ATTACK_CHANCE:
 		choices.append(STATE_SHOCKWAVE)
 	if not get_tree().get_nodes_in_group("foods").is_empty() and randf() <= POISON_ATTACK_CHANCE:
 		choices.append(STATE_POISON)
@@ -344,9 +358,12 @@ func _move_to_food(delta: float) -> void:
 		bite_timer = BITE_INTERVAL
 		if target_food.has_method("eat"):
 			target_food.call("eat", BITE_DAMAGE)
+			if target_food.has_method("is_protected") and bool(target_food.call("is_protected")):
+				_leave_food()
+				return
 			_try_lay_eggs_on_food()
 
-	if eating_time >= 2.0:
+	if eating_time >= 1.2:
 		_leave_food()
 
 func _wander(delta: float) -> void:
@@ -382,10 +399,9 @@ func _try_lay_eggs_on_food() -> void:
 		return
 
 	var eggs_to_lay := max_eggs - current_eggs
-	var hatch_options := FLY_SCRIPT.get_hatch_options_for_parent(BOSS_EGG_PARENT_NAME)
 	for _index in range(eggs_to_lay):
 		var egg := FLY_EGG_SCRIPT.new() as Area2D
-		egg.call("configure", BOSS_EGG_HEALTH, hatch_options, target_food, BOSS_EGG_PARENT_NAME)
+		egg.call("configure", BOSS_EGG_HEALTH, BOSS_EGG_HATCH_OPTIONS, target_food, BOSS_EGG_PARENT_NAME)
 		egg.add_to_group(EGG_FOOD_GROUP)
 		target_food.add_child(egg)
 		var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(10.0, 30.0)
@@ -439,6 +455,7 @@ func take_damage(_amount: int) -> void:
 	_emit_health_changed()
 
 	if current_health <= 0:
+		_clear_food_eggs()
 		_deplete_life_bar()
 		return
 
@@ -454,6 +471,7 @@ func _deplete_life_bar() -> void:
 		_play_death_animation(false)
 		return
 
+	_clear_food_eggs()
 	_play_death_animation(true)
 
 func _finish_revive() -> void:
@@ -463,10 +481,19 @@ func _finish_revive() -> void:
 	stun_hits_progress = 0
 	stun_hits_required = randi_range(BOSS_STUN_HITS_MIN, BOSS_STUN_HITS_MAX)
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * BOSS_SPEED
+	revive_grace_timer = REVIVE_GRACE_TIME
 	if collision_shape != null:
 		collision_shape.disabled = false
 	_emit_health_changed()
 	_set_state(STATE_FLYING, true)
+
+func _clear_food_eggs() -> void:
+	for food in get_tree().get_nodes_in_group("foods"):
+		if not is_instance_valid(food):
+			continue
+		for child in food.get_children():
+			if child.is_in_group("fly_eggs"):
+				child.queue_free()
 
 func _play_death_animation(revive_after: bool) -> void:
 	is_dying = true
@@ -476,6 +503,7 @@ func _play_death_animation(revive_after: bool) -> void:
 	velocity = Vector2.ZERO
 	if collision_shape != null:
 		collision_shape.disabled = true
+	revive_grace_timer = 0.0
 	_set_state(STATE_KILL, true)
 
 func _enter_stun_state() -> void:
@@ -486,6 +514,7 @@ func _enter_stun_state() -> void:
 	stun_timer = STUN_DURATION
 	guard_protect_requested.emit(true)
 	velocity = Vector2.ZERO
+	revive_grace_timer = 0.0
 	_set_state(STATE_STUN, true)
 
 func _emit_health_changed() -> void:
@@ -496,7 +525,10 @@ func _pick_food_target() -> Node2D:
 	var valid_foods: Array[Node2D] = []
 	for food in foods:
 		if _is_food_valid(food) and food is Node2D:
-			valid_foods.append(food as Node2D)
+			var food_node := food as Node2D
+			if food_node.has_method("is_protected") and bool(food_node.call("is_protected")):
+				continue
+			valid_foods.append(food_node)
 
 	if valid_foods.is_empty():
 		return null
@@ -506,12 +538,19 @@ func _pick_food_target() -> Node2D:
 	)
 
 	var choice_count := mini(valid_foods.size(), 3)
-	return valid_foods[randi_range(0, choice_count - 1)]
+	var choice := valid_foods[randi_range(0, choice_count - 1)]
+	if choice == last_eaten_food and valid_foods.size() > 1:
+		var alt_foods := valid_foods.filter(func(f: Node2D): return f != last_eaten_food)
+		choice = alt_foods[randi_range(0, alt_foods.size() - 1)]
+	return choice
 
 func _is_food_valid(food: Variant) -> bool:
 	if food == null or not is_instance_valid(food) or not (food is Node2D):
 		return false
-	return (food as Node2D).is_inside_tree()
+	if not (food as Node2D).is_inside_tree():
+		return false
+
+	return not food.has_method("is_available_for_consumption") or bool(food.call("is_available_for_consumption"))
 
 func _apply_poison_to_foods() -> void:
 	for food in get_tree().get_nodes_in_group("foods"):
@@ -613,6 +652,7 @@ func _shockwave_swatter_energy() -> void:
 
 func _leave_food() -> void:
 	eating_time = 0.0
+	last_eaten_food = target_food
 	target_food = null
 	target_refresh_timer = TARGET_REFRESH_TIME
 	velocity = Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * BOSS_SPEED

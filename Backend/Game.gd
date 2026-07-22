@@ -2022,7 +2022,7 @@ func _spawn_knight_guards(boss: Node2D, count: int) -> void:
 			clampf(boss_position.x + offset.x - bounds.position.x, 60.0, bounds.size.x - 60.0),
 			clampf(boss_position.y + offset.y - bounds.position.y, 80.0, bounds.size.y - 80.0)
 		)
-		guard.call("configure", bounds, boss_position, guard_health)
+		guard.call("configure", bounds, boss_position, guard_health, Vector2.ZERO, boss)
 		guard.connect("died", Callable(self, "_on_knight_guard_died"))
 		fly_container.add_child(guard)
 		active_knight_guards.append(guard)
@@ -2142,10 +2142,11 @@ func _on_boss_shockwave_released(_origin: Vector2) -> void:
 func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = "") -> void:
 	if not day_active:
 		return
-	if behavior_name == "KnightGuard" and boss_round_active:
-		_spawn_hatched_knight_guard(spawn_position)
-		return
-	if boss_round_active and behavior_name == "":
+	if boss_round_active:
+		if behavior_name == "KnightGuard":
+			_spawn_hatched_knight_guard(spawn_position)
+		elif behavior_name in ["Normal", "Swarm", "Tank"]:
+			_spawn_boss_hatched_fly(spawn_position, behavior_name)
 		return
 	if flies_left >= _get_max_active_flies():
 		return
@@ -2154,6 +2155,10 @@ func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = ""
 	_spawn_fly(spawn_position + offset, bounds, false, false, behavior_name)
 	flies_left += 1
 	_update_hud()
+
+func _spawn_boss_hatched_fly(spawn_position: Vector2, behavior_name: String) -> void:
+	var bounds := _get_fly_bounds()
+	_spawn_fly(spawn_position, bounds, false, false, behavior_name)
 
 func _spawn_hatched_knight_guard(spawn_position: Vector2) -> void:
 	var boss := fly_container.get_node_or_null("BossFly")
@@ -2167,7 +2172,7 @@ func _spawn_hatched_knight_guard(spawn_position: Vector2) -> void:
 		clampf(spawn_position.x - bounds.position.x, 60.0, bounds.size.x - 60.0),
 		clampf(spawn_position.y - bounds.position.y, 80.0, bounds.size.y - 80.0)
 	)
-	guard.call("configure", bounds, boss.global_position, guard_health)
+	guard.call("configure", bounds, boss.global_position, guard_health, Vector2.ZERO, boss)
 	guard.connect("died", Callable(self, "_on_knight_guard_died"))
 	fly_container.add_child(guard)
 	active_knight_guards.append(guard)

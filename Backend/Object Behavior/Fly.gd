@@ -429,6 +429,8 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 		take_damage(damage_amount)
 
 func take_damage(amount: int) -> void:
+	if is_dying:
+		return
 	health -= amount
 	click_streak += 1
 	if sfx_swat != null:
@@ -472,7 +474,10 @@ func _is_food_valid(food: Variant) -> bool:
 	if food == null or not is_instance_valid(food) or not (food is Node2D):
 		return false
 
-	return (food as Node2D).is_inside_tree()
+	if not (food as Node2D).is_inside_tree():
+		return false
+
+	return not food.has_method("is_available_for_consumption") or bool(food.call("is_available_for_consumption"))
 
 func apply_big_fan(direction: float, target_x: float, strength: float, duration: float = 1.4) -> void:
 	fan_timer = maxf(duration, 0.0)
@@ -536,7 +541,7 @@ func _try_lay_eggs_on_food() -> void:
 	if not _is_food_valid(target_food):
 		return
 
-	var max_eggs := 3 if behavior.name == "Queen" else 1
+	var max_eggs := 1
 	var current_eggs := _get_food_egg_count(target_food)
 	if current_eggs >= max_eggs:
 		return

@@ -23,6 +23,7 @@ var max_health := 1
 var movement_bounds := Rect2(Vector2.ZERO, Vector2(1152, 648))
 var velocity := Vector2.ZERO
 var center_point := Vector2.ZERO
+var boss_ref: Node2D
 var orbit_angle := 0.0
 var sprite_frame_timer := 0.0
 var blink_timer := 0.0
@@ -54,10 +55,11 @@ func _ready() -> void:
 	blink_timer = 0.0
 	_update_sprite_direction()
 
-func configure(bounds: Rect2, boss_position: Vector2, guard_health: int, guard_center: Vector2 = Vector2.ZERO) -> void:
+func configure(bounds: Rect2, boss_position: Vector2, guard_health: int, guard_center: Vector2 = Vector2.ZERO, boss: Node2D = null) -> void:
 	movement_bounds = bounds
 	max_health = maxi(guard_health, 1)
 	health = max_health
+	boss_ref = boss
 	center_point = guard_center if guard_center != Vector2.ZERO else boss_position
 	if is_node_ready():
 		_update_health_bar()
@@ -118,6 +120,8 @@ func _roam(delta: float) -> void:
 	_keep_inside_bounds()
 
 func _protect(delta: float) -> void:
+	if boss_ref != null and is_instance_valid(boss_ref):
+		center_point = boss_ref.global_position
 	orbit_angle += delta * 90.0
 	var orbit_target := center_point + Vector2.RIGHT.rotated(orbit_angle) * KNIGHT_PROTECT_RADIUS
 	var steering := (orbit_target - global_position).normalized() * KNIGHT_PROTECT_SPEED

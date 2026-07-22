@@ -9,6 +9,7 @@ const HATCH_FRAME_COUNT := 13
 const IDLE_FRAME_TIME := 0.12
 const HATCH_FRAME_TIME := 0.06
 const EGG_RADIUS := 22.0
+const EGG_LIFETIME := 6.0
 
 var health := 1
 var max_health := 1
@@ -16,10 +17,10 @@ var hatch_options: Array[String] = []
 var hatch_timer := 0.0
 var frame_timer := 0.0
 var hatching := false
+var is_expiring := false
 var food_parent: Node2D = null
 var egg_damage_per_second := 0.5
 var parent_name := ""
-const KNIGHT_GUARD_HATCH_CHANCE := 0.08
 
 var sprite: Sprite2D
 var collision_shape: CollisionShape2D
@@ -32,7 +33,7 @@ func configure(new_health: int, new_hatch_options: Array[String], parent_food: N
 	hatch_options.clear()
 	for option in new_hatch_options:
 		hatch_options.append(option)
-	hatch_timer = randf_range(3.0, 5.0)
+	hatch_timer = EGG_LIFETIME
 	food_parent = parent_food
 	parent_name = parent
 
@@ -46,12 +47,16 @@ func _ready() -> void:
 	_play_ease_in()
 
 func _process(delta: float) -> void:
+	if is_expiring:
+		return
 	if hatching:
 		_update_hatch(delta)
 		return
 
-	if food_parent != null and is_instance_valid(food_parent) and food_parent.has_method("eat"):
-		food_parent.call("eat", egg_damage_per_second * delta)
+	if food_parent != null and is_instance_valid(food_parent) and food_parent.has_method("apply_egg_damage"):
+		if not bool(food_parent.call("apply_egg_damage", egg_damage_per_second * delta)):
+			_play_ease_out()
+			return
 
 	hatch_timer -= delta
 	_animate_idle(delta)
@@ -146,8 +151,6 @@ func _update_hatch(delta: float) -> void:
 		var behavior_name := "Normal"
 		if not hatch_options.is_empty():
 			behavior_name = hatch_options.pick_random()
-		if parent_name == "Boss" and randf() <= KNIGHT_GUARD_HATCH_CHANCE:
-			behavior_name = "KnightGuard"
 		hatched.emit(global_position, behavior_name)
 		queue_free()
 		return
@@ -164,6 +167,7 @@ func _play_ease_in() -> void:
 	tween.set_ease(Tween.EASE_OUT)
 
 func _play_ease_out() -> void:
+	is_expiring = true
 	input_pickable = false
 	if collision_shape != null:
 		collision_shape.disabled = true

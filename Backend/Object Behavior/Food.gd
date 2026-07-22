@@ -5,6 +5,7 @@ signal depleted(food: Area2D)
 const FOODS_SCRIPT := preload("res://Backend/Object Initialization/Foods_Attributes.gd")
 const FOOD_SPAWN_TEXTURE := preload("res://assets/effects/food_spawn.png")
 const FOOD_SPOIL_TEXTURE := preload("res://assets/effects/food_spoil.png")
+const MAX_EGG_DAMAGE := 2.5
 
 const CRITICAL_FRAME_COUNT := 5
 const CRITICAL_FRAME_TIME := 0.1
@@ -117,6 +118,7 @@ static func get_random_config_for_category(category: String = "") -> FoodConfig:
 var config: FoodConfig
 var max_freshness := 100.0
 var freshness := 100.0
+var egg_damage_taken := 0.0
 var spoil_rate := 1.25
 var nutrition := 1
 var radius := 48.0
@@ -175,9 +177,8 @@ func get_fresh_sell_value() -> int:
 	return int(ceilf(config.sell_price))
 
 func eat(amount: float) -> int:
-	if protected or freshness <= 0.0:
+	if not is_available_for_consumption() or protected:
 		return 0
-
 	freshness = maxf(freshness - amount, 0.0)
 	_animate_critical(0.0)
 	_update_visuals()
@@ -187,13 +188,36 @@ func eat(amount: float) -> int:
 
 	return nutrition
 
+func apply_egg_damage(amount: float) -> bool:
+	if protected:
+		return true
+	if not is_available_for_consumption():
+		return false
+
+	var remaining_damage := maxf(MAX_EGG_DAMAGE - egg_damage_taken, 0.0)
+	if remaining_damage <= 0.0:
+		return false
+
+	var applied_damage := minf(amount, remaining_damage)
+	eat(applied_damage)
+	egg_damage_taken += applied_damage
+	return egg_damage_taken < MAX_EGG_DAMAGE and freshness > 0.0
+
 func set_protected(value: bool) -> void:
 	protected = value
+
+func is_protected() -> bool:
+	return protected
 
 func get_radius() -> float:
 	return radius
 
+func is_available_for_consumption() -> bool:
+	return freshness > 0.0 and not is_spawning and not is_spoil_pending and not is_spoiling and not is_queued_for_deletion()
+
 func apply_poison_effect(duration: float = POISON_EFFECT_DURATION) -> void:
+	if not is_available_for_consumption():
+		return
 	poison_effect_timer = maxf(poison_effect_timer, duration)
 	if egg_label != null:
 		egg_label.visible = true
@@ -202,6 +226,8 @@ func apply_poison_effect(duration: float = POISON_EFFECT_DURATION) -> void:
 func _process(delta: float) -> void:
 	_update_spawn_animation(delta)
 	_update_spoil_animation(delta)
+	if not is_available_for_consumption():
+		return
 	
 	if poison_effect_timer > 0.0:
 		poison_effect_timer = maxf(poison_effect_timer - delta, 0.0)
@@ -209,6 +235,11 @@ func _process(delta: float) -> void:
 			egg_label.visible = false
 
 	if freshness <= 0.0:
+		return
+
+	if get_tree() and not get_tree().get_nodes_in_group("boss_flies").is_empty():
+		_animate_critical(delta)
+		_update_visuals()
 		return
 
 	var effective_spoil_rate := spoil_rate
