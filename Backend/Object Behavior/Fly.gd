@@ -162,8 +162,8 @@ static func _scaled_behavior_for_day(base_behavior: FlyBehavior, day: int, event
 	var speed_multiplier := float(event.get("fly_speed_multiplier", 1.0))
 	return FlyBehavior.new(
 		base_behavior.name,
-		int(ceilf(float(base_behavior.max_health) * health_multiplier + float(day) * 0.15)),
-		(base_behavior.speed + float(day) * 3.0) * speed_multiplier,
+		int(ceilf(float(base_behavior.max_health) * health_multiplier + float(day) * 0.10)),
+		(base_behavior.speed + float(day) * 2.0) * speed_multiplier,
 		base_behavior.image_scale,
 		base_behavior.tint,
 		base_behavior.hitbox_radius,

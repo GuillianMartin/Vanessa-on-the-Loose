@@ -44,6 +44,9 @@ const SWATTER_ATTACK_FRAMES := 4
 const SWATTER_ATTACK_FRAME_TIME := 0.045
 const SWATTER_OFFSET := Vector2(34, 34)
 const MAX_ACTIVE_CUSTOMERS := 5
+const MAX_ACTIVE_FLIES_BASE := 25
+const MAX_ACTIVE_FLIES_PER_DAY := 1.2
+const FLY_REFILL_RATIO := 0.45
 const MAX_DEBT_LIMIT: int = -500
 const MAX_BANKRUPTCY_STRIKES: int = 3
 const RESULT_FRAME_SIZE := Vector2(723, 483)
@@ -275,12 +278,13 @@ func _maintain_fly_loop() -> void:
 	if boss_round_active:
 		return
 
-	var desired_floor: int = maxi(5, int(ceil(float(MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)) * 0.45)))
+	var max_active_flies := _get_max_active_flies()
+	var desired_floor: int = mini(max_active_flies, maxi(5, int(ceil(float(MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)) * FLY_REFILL_RATIO))))
 	if flies_left >= desired_floor:
 		return
 
 	var bounds := _get_fly_bounds()
-	var spawn_count: int = mini(4, desired_floor - flies_left)
+	var spawn_count: int = mini(4, mini(desired_floor - flies_left, max_active_flies - flies_left))
 	for _index in range(spawn_count):
 		_spawn_fly(
 			Vector2(randf_range(bounds.position.x, bounds.end.x), randf_range(bounds.position.y, bounds.end.y)),
@@ -289,6 +293,9 @@ func _maintain_fly_loop() -> void:
 		)
 		flies_left += 1
 	_update_hud()
+
+func _get_max_active_flies() -> int:
+	return int(floor(MAX_ACTIVE_FLIES_BASE + float(market_day) * MAX_ACTIVE_FLIES_PER_DAY))
 
 func _build_game_nodes() -> void:
 	background_sprite = get_node_or_null("BackgroundVegetable") as Sprite2D
@@ -1278,7 +1285,7 @@ func _start_day() -> void:
 	day_customers_served = 0
 	day_reputation_start = reputation
 	game_timer = 999999.0 if boss_round_active else MARKET_PROGRESSION.DAY_DURATION_SECONDS
-	flies_left = 0 if boss_round_active else MARKET_PROGRESSION.get_fly_count(market_day, active_market_event)
+	flies_left = 0 if boss_round_active else mini(MARKET_PROGRESSION.get_fly_count(market_day, active_market_event), _get_max_active_flies())
 	day_initial_flies = flies_left
 	rush_active = false
 	rush_timer = 0.0
@@ -2139,6 +2146,8 @@ func _on_fly_spawn_requested(spawn_position: Vector2, behavior_name: String = ""
 		_spawn_hatched_knight_guard(spawn_position)
 		return
 	if boss_round_active and behavior_name == "":
+		return
+	if flies_left >= _get_max_active_flies():
 		return
 	var bounds := _get_fly_bounds()
 	var offset := Vector2.RIGHT.rotated(randf_range(0.0, TAU)) * randf_range(70.0, 120.0)

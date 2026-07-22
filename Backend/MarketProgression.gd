@@ -2,10 +2,10 @@ extends Node
 # MARKET PROGRESSION
 # Serves as game event attribute changer for loop progression
 
-const DAY_DURATION_SECONDS := 4
-const STARTING_MONEY := 10000
-const STARTING_REPUTATION := 10000
-const STARTING_SATISFACTION := 10000
+const DAY_DURATION_SECONDS := 60
+const STARTING_MONEY := 500
+const STARTING_REPUTATION := 10
+const STARTING_SATISFACTION := 10
 
 # Function that serve as event picker
 static func get_market_event(day: int) -> Dictionary:
@@ -124,7 +124,7 @@ static func get_food_spoil_multiplier(event: Dictionary) -> float:
 	return float(event.get("spoil_modifier", 1.0))
 
 static func get_fly_count(day: int, event: Dictionary) -> int:
-	var base_count: int = 10 + int(floor(float(max(day - 1, 0)) * 1.4))
+	var base_count: int = 10 + int(floor(float(max(day - 1, 0)) * 0.8))
 	return int(ceil(float(base_count) * float(event.get("fly_spawn_multiplier", 1.0))))
 
 static func get_customer_spawn_bounds(day: int, event: Dictionary, rush_active: bool) -> Vector2:
