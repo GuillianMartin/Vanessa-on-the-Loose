@@ -19,6 +19,9 @@ const SPOIL_FRAME_COUNT := 22
 const SPOIL_DURATION := 1.2
 const SPOIL_FRAME_TIME := SPOIL_DURATION / SPOIL_FRAME_COUNT
 
+const FOOD_SPAWN_SFX := preload("res://assets/Sound Effects/sound_fx/food_spawn.mp3")
+const SPOIL_SFX := preload("res://assets/Sound Effects/sound_fx/spoil.mp3")
+
 var price_label: Label
 
 class FoodConfig:
@@ -141,6 +144,9 @@ var poison_effect_timer := 0.0
 var egg_label: Label
 var protected := false
 
+@onready var sfx_food_spawn: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_food_spawn") as AudioStreamPlayer2D
+@onready var sfx_spoil: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_spoil") as AudioStreamPlayer2D
+
 func _ready() -> void:
 	add_to_group("foods")
 	input_pickable = false
@@ -205,6 +211,14 @@ func apply_egg_damage(amount: float) -> bool:
 
 func set_protected(value: bool) -> void:
 	protected = value
+	if value:
+		freshness = max_freshness
+		is_spoil_pending = false
+		is_spoiling = false
+		if spoil_animation_sprite != null:
+			spoil_animation_sprite.visible = false
+		if sprite != null:
+			sprite.visible = true
 
 func is_protected() -> bool:
 	return protected
@@ -228,7 +242,7 @@ func _process(delta: float) -> void:
 	_update_spoil_animation(delta)
 	if not is_available_for_consumption():
 		return
-	
+
 	if poison_effect_timer > 0.0:
 		poison_effect_timer = maxf(poison_effect_timer - delta, 0.0)
 		if poison_effect_timer <= 0.0 and egg_label != null:
@@ -246,7 +260,8 @@ func _process(delta: float) -> void:
 	if poison_effect_timer > 0.0:
 		effective_spoil_rate *= 0.7
 
-	freshness = maxf(freshness - effective_spoil_rate * delta, 0.0)
+	if not protected:
+		freshness = maxf(freshness - effective_spoil_rate * delta, 0.0)
 	_animate_critical(delta)
 	_update_visuals()
 
@@ -272,7 +287,7 @@ func _apply_config() -> void:
 		circle.radius = radius
 
 	freshness_bar.size = Vector2(maxf(radius * 1.15, 54.0), 6)
-	freshness_bar.position = Vector2(-freshness_bar.size.x * 0.5, radius + 8.0)
+	freshness_bar.position = Vector2(-freshness_bar.size.x * 0.5, -radius + 10.0)
 	_update_visuals()
 	_play_spawn_animation()
 
@@ -352,7 +367,11 @@ func _update_visuals() -> void:
 		var ratio := clampf(freshness / max_freshness, 0.0, 1.0)
 
 	_update_food_sprite()
-	sprite.modulate = config.tint
+	if config != null:
+		if protected:
+			sprite.modulate = Color(1.0, 0.92, 0.65, 1.0)
+		else:
+			sprite.modulate = config.tint
 	freshness_bar.max_value = max_freshness
 	freshness_bar.value = freshness
 	freshness_bar.visible = not is_spawning and not is_spoiling and not is_spoil_pending
@@ -361,7 +380,7 @@ func _update_visuals() -> void:
 	if price_label:
 		price_label.text = "₱%d" % get_current_value()
 		# Position it slightly below the freshness health bar
-		price_label.position = Vector2(-50, radius + 16.0)
+		price_label.position = Vector2(-50, -radius - 24.0)
 		price_label.custom_minimum_size = Vector2(100, 20)
 		price_label.visible = not is_spawning and not is_spoiling and not is_spoil_pending
 
@@ -426,11 +445,11 @@ func _start_spoil_animation() -> void:
 	if spoil_animation_sprite != null:
 		spoil_animation_sprite.visible = true
 		spoil_animation_sprite.frame = 0
-		# Position spoil animation slightly above the food
 		if sprite != null:
 			spoil_animation_sprite.position = sprite.position + Vector2(0, -90)
-		# Scale spoil animation to match food size
 		_scale_animation_sprite(spoil_animation_sprite, config.visual_size * 2)
+	if sfx_spoil != null:
+		sfx_spoil.play()
 
 func _update_food_sprite(force: bool = false) -> void:
 	if config == null or sprite == null:
@@ -488,8 +507,9 @@ func _play_spawn_animation() -> void:
 	if spawn_animation_sprite != null:
 		spawn_animation_sprite.visible = true
 		spawn_animation_sprite.frame = 0
-		# Scale spawn animation to match food size
 		_scale_animation_sprite(spawn_animation_sprite, config.visual_size * 1.5)
+	if sfx_food_spawn != null:
+		sfx_food_spawn.play()
 
 func _update_spawn_animation(delta: float) -> void:
 	if not is_spawning or spawn_animation_sprite == null:

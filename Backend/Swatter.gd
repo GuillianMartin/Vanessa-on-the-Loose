@@ -135,7 +135,7 @@ func drain_energy_to_ratio(ratio: float) -> void:
 	energy_changed.emit(energy, max_energy)
 
 func hit_customer() -> void:
-	energy = maxf(energy - CUSTOMER_HIT_COST, 0.0)
+	energy = maxf(energy - CUSTOMER_HIT_COST, 0.50)
 	current_combo = 0 # Break combo streak on penalty
 	energy_changed.emit(energy, max_energy)
 

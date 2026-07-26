@@ -226,6 +226,7 @@ func _ready() -> void:
 	get_tree().paused = false
 	base_scene_position = position
 	_build_game_nodes()
+	_build_sfx_players()
 	big_fan_sprite = get_node_or_null("BigFanIcon") as Sprite2D
 	_build_swatter()
 	_build_hud()
@@ -321,6 +322,22 @@ func _build_game_nodes() -> void:
 	customer_container.z_index = 30
 	add_child(customer_container)
 
+func _build_sfx_players() -> void:
+	var sfx_food_spawn := AudioStreamPlayer2D.new()
+	sfx_food_spawn.name = "sfx_food_spawn"
+	sfx_food_spawn.stream = load("res://assets/Sound Effects/sound_fx/food_spawn.mp3")
+	add_child(sfx_food_spawn)
+
+	var sfx_spoil := AudioStreamPlayer2D.new()
+	sfx_spoil.name = "sfx_spoil"
+	sfx_spoil.stream = load("res://assets/Sound Effects/sound_fx/spoil.mp3")
+	add_child(sfx_spoil)
+
+	var sfx_fly_kill := AudioStreamPlayer2D.new()
+	sfx_fly_kill.name = "sfx_fly_kill"
+	sfx_fly_kill.stream = load("res://assets/Sound Effects/sound_fx/fly_kill.mp3")
+	add_child(sfx_fly_kill)
+
 func _build_swatter() -> void:
 	swatter_entity = SWATTER_SCRIPT.new()
 	swatter_entity.name = "SwatterEnergy"
@@ -355,6 +372,20 @@ func _build_hud() -> void:
 	rush_label = hud_layer.get_node("TopBar/Rush")
 	swatter_energy_label = hud_layer.get_node("TopBar/EnergyLabel")
 	swatter_energy_bar = hud_layer.get_node("TopBar/EnergyBar")
+	var energy_bg := StyleBoxFlat.new()
+	energy_bg.bg_color = Color(0.15, 0.15, 0.15, 0.6)
+	energy_bg.corner_radius_top_left = 6
+	energy_bg.corner_radius_top_right = 6
+	energy_bg.corner_radius_bottom_left = 6
+	energy_bg.corner_radius_bottom_right = 6
+	swatter_energy_bar.add_theme_stylebox_override("bg", energy_bg)
+	var energy_fill := StyleBoxFlat.new()
+	energy_fill.bg_color = Color(0.2, 0.85, 0.35)
+	energy_fill.corner_radius_top_left = 6
+	energy_fill.corner_radius_top_right = 6
+	energy_fill.corner_radius_bottom_left = 6
+	energy_fill.corner_radius_bottom_right = 6
+	swatter_energy_bar.add_theme_stylebox_override("fill", energy_fill)
 	boss_health_label = hud_layer.get_node("BossHealth/Label")
 	boss_health_bar = hud_layer.get_node("BossHealth/Bar")
 	skill_duration_list = hud_layer.get_node("DurationList")
@@ -1956,6 +1987,8 @@ func _spawn_single_food_loop() -> bool:
 			food.position = candidate
 			food.connect("depleted", _on_food_depleted)
 			food_container.add_child(food)
+			if float(skill_timers.get("fresh_goods", 0.0)) > 0.0 and food.has_method("set_protected"):
+				food.call("set_protected", true)
 			active_placed_food_records.append({
 				"node_ref": food,
 				"position": candidate,

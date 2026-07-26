@@ -12,8 +12,8 @@ var FOOD_CARRY_OFFSET := Vector2(0, (DEFAULT_TEXTURE.get_height() * 0.5))
 const DAMAGE_SHOW_TIME := 0.25 
 const SPEED := 280.0
 const BASE_MAX_PATIENCE := 100.0
-const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.0  # based original 0.5
-const PATIENCE_LOSS_PER_FLY_SECOND := 0.0    # based original 8.0
+const PATIENCE_LOSS_FROM_SWAT_RATIO := 0.5
+const PATIENCE_LOSS_PER_FLY_SECOND := 3.0
 const REACH_THRESHOLD := -2.0
 
 const CUSTOMER_HAND_ASSET_SCRIPT := preload("res://Backend/Object Initialization/CustomerHand_Attributes.gd")
@@ -294,7 +294,7 @@ func _ensure_nodes() -> void:
 		local_patience_bar.show_percentage = false
 		local_patience_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		local_patience_bar.custom_minimum_size = Vector2(50, 6)
-		local_patience_bar.position = Vector2(-25, -70)
+		local_patience_bar.position = Vector2(-25, 160)
 		
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.2, 0.8, 0.2)

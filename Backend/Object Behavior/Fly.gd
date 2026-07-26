@@ -9,6 +9,18 @@ const FLY_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/Fly_
 const FLY_EGG_SCRIPT := preload("res://Backend/Object Initialization/FlyEgg.gd")
 
 const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")
+const FLY_KILL_SFX := preload("res://assets/Sound Effects/sound_fx/fly_kill.mp3")
+
+const FLY_LOOP_SFX := {
+	"Mother": preload("res://assets/Sound Effects/fly_sound/mother_fly.mp3"),
+	"Queen": preload("res://assets/Sound Effects/fly_sound/mother_fly.mp3"),
+	"Tank": preload("res://assets/Sound Effects/fly_sound/chunky_fly.mp3"),
+	"Armored": preload("res://assets/Sound Effects/fly_sound/chunky_fly.mp3"),
+	"Mega": preload("res://assets/Sound Effects/fly_sound/chunky_fly.mp3"),
+	"Swarm": preload("res://assets/Sound Effects/fly_sound/swarm_fly.mp3"),
+	"Speed": preload("res://assets/Sound Effects/fly_sound/swarm_fly.mp3"),
+}
+const DEFAULT_LOOP_SFX := preload("res://assets/Sound Effects/fly_sound/default_fly.mp3")
 
 const FLYING_FRAME_COUNT := 6
 const EATING_FRAME_COUNT := 4
@@ -212,6 +224,9 @@ var fan_target_x := 0.0
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 var health_bar: ProgressBar
+@onready var sfx_fly_kill: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_fly_kill") as AudioStreamPlayer2D
+
+var sfx_loop: AudioStreamPlayer2D
 
 func _ready() -> void:
 	input_pickable = true
@@ -271,6 +286,13 @@ func _apply_behavior() -> void:
 	health_bar.position = Vector2(-health_bar.size.x * 0.5, behavior.health_bar_y)
 	_update_health_bar()
 
+	_ensure_loop_sfx()
+	var sound: AudioStream = FLY_LOOP_SFX.get(behavior.name, DEFAULT_LOOP_SFX)
+	if sfx_loop.stream != sound:
+		sfx_loop.stream = sound
+	if not sfx_loop.playing:
+		sfx_loop.play(randf_range(1.0, 3.0))
+
 func _setup_health_bar() -> void:
 	if health_bar != null:
 		return
@@ -279,6 +301,17 @@ func _setup_health_bar() -> void:
 	health_bar.show_percentage = false
 	health_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(health_bar)
+
+func _ensure_loop_sfx() -> void:
+	if sfx_loop == null:
+		sfx_loop = AudioStreamPlayer2D.new()
+		sfx_loop.name = "sfx_loop"
+		sfx_loop.finished.connect(_on_loop_finished)
+		add_child(sfx_loop)
+
+func _on_loop_finished() -> void:
+	if sfx_loop != null and is_instance_valid(sfx_loop):
+		sfx_loop.play(randf_range(1.0, 3.0))
 
 func _process(delta: float) -> void:
 	if is_dying:
@@ -346,12 +379,16 @@ func _play_death_animation() -> void:
 		collision_shape.disabled = true
 	if health_bar != null:
 		health_bar.visible = false
+	if sfx_loop != null:
+		sfx_loop.stop()
 
 	sprite.texture = KILL_SPRITE_TEXTURE
 	sprite.hframes = KILL_SPRITE_FRAME_COUNT
 	sprite.vframes = 1
 	sprite.frame = 0
 	sprite_frame_timer = 0.0
+	if sfx_fly_kill != null:
+		sfx_fly_kill.play()
 
 func _animate_sprite(delta: float, frame_count: int, frame_time: float) -> void:
 	sprite_frame_timer += delta
