@@ -78,9 +78,54 @@ var Foods := {
 				11.0
 			)
 		},
+		{
+			"name": "Radish",
+			"default": FoodAsset.new(load("res://assets/Foods/Vegetable/radish/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Vegetable/radish/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Vegetable/radish/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Radish",
+				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
+				95.0,
+				0.6,
+				1,
+				13.0
+			)
+		},
 	],
 
 	"Fruit": [
+		{
+			"name": "Apple",
+			"default": FoodAsset.new(load("res://assets/Foods/Fruits/apple/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/apple/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/apple/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Apple",
+				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
+				88.0,
+				0.72,
+				1,
+				12.0
+			)
+		},
+		{
+			"name": "Orange",
+			"default": FoodAsset.new(load("res://assets/Foods/Fruits/orange/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/orange/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/orange/critical.png"), 5),
+			"attributes": create_food_attributes(
+				"Orange",
+				96.0 * FOOD_SIZE_MULT,
+				48.0 * FOOD_SIZE_MULT,
+				88.0,
+				0.72,
+				1,
+				12.0
+			)
+		},
 		{
 			"name": "Banana",
 			"default": FoodAsset.new(load("res://assets/Foods/Fruits/banana/default.png"), 1),
