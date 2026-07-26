@@ -7,7 +7,10 @@ const HATCH_TEXTURE := preload("res://assets/Flies/mother_fly/egg_hatch.png")
 const IDLE_FRAME_COUNT := 4
 const HATCH_FRAME_COUNT := 13
 const IDLE_FRAME_TIME := 0.12
+const IDLE_FAST_FRAME_TIME := 0.045
+const IDLE_SPEEDUP_TIME := 2.0
 const HATCH_FRAME_TIME := 0.06
+const HATCH_LEAD_TIME := 1.25
 const EGG_RADIUS := 22.0
 const EGG_LIFETIME := 6.0
 
@@ -50,6 +53,7 @@ func _process(delta: float) -> void:
 	if is_expiring:
 		return
 	if hatching:
+		hatch_timer -= delta
 		_update_hatch(delta)
 		return
 
@@ -60,7 +64,7 @@ func _process(delta: float) -> void:
 
 	hatch_timer -= delta
 	_animate_idle(delta)
-	if hatch_timer <= 0.0:
+	if hatch_timer <= HATCH_LEAD_TIME:
 		_start_hatch()
 
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
@@ -125,7 +129,8 @@ func _update_health_bar() -> void:
 
 func _animate_idle(delta: float) -> void:
 	frame_timer += delta
-	if frame_timer < IDLE_FRAME_TIME:
+	var frame_time := IDLE_FAST_FRAME_TIME if hatch_timer <= IDLE_SPEEDUP_TIME else IDLE_FRAME_TIME
+	if frame_timer < frame_time:
 		return
 	frame_timer = 0.0
 	sprite.frame = (sprite.frame + 1) % IDLE_FRAME_COUNT
@@ -148,6 +153,9 @@ func _update_hatch(delta: float) -> void:
 	frame_timer = 0.0
 	var next_frame := sprite.frame + 1
 	if next_frame >= HATCH_FRAME_COUNT:
+		sprite.frame = HATCH_FRAME_COUNT - 1
+		if hatch_timer > 0.0:
+			return
 		var behavior_name := "Normal"
 		if not hatch_options.is_empty():
 			behavior_name = hatch_options.pick_random()
