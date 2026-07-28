@@ -22,7 +22,7 @@ static func get_skill_definitions() -> Dictionary:
 			"icon": ICON_PATH % "mega_swatter",
 			"cost": 100,
 			"duration": 10.0,
-			"description": "Swatter area +100%, damage +50%.",
+			"description": "Doubles your swatter area and increases damage by 50% for a short time.",
 		},
 		"instant_energy": {
 			"id": "instant_energy",
@@ -31,7 +31,7 @@ static func get_skill_definitions() -> Dictionary:
 			"icon": ICON_PATH % "instant_energy",
 			"cost": 200,
 			"duration": 5.0,
-			"description": "No swatter energy consumption.",
+			"description": "Removes all energy costs from swatter attacks for the duration.",
 		},
 		"fresh_goods": {
 			"id": "fresh_goods",
@@ -40,7 +40,7 @@ static func get_skill_definitions() -> Dictionary:
 			"icon": ICON_PATH % "fresh_goods",
 			"cost": 300,
 			"duration": 5.0,
-			"description": "Food cannot be damaged.",
+			"description": "Protects all food from fly damage and resets spoilage to full.",
 		},
 		"big_fan": {
 			"id": "big_fan",
@@ -49,6 +49,6 @@ static func get_skill_definitions() -> Dictionary:
 			"icon": ICON_PATH % "big_fan",
 			"cost": 500,
 			"duration": 10.0,
-			"description": "Blow flies (except boss) to a side.",
+			"description": "Pushes all non-boss flies to the left or right side of the screen.",
 		},
 	}

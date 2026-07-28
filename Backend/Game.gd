@@ -86,6 +86,12 @@ var icon_paths := {
 	"energy": "res://assets/icon/Upgrades/energy.png",
 }
 
+var upgrade_descriptions := {
+	"damage": "Increases swatter damage by +1 per level and raises critical hit chance.",
+	"speed": "Reduces attack cooldown and lowers energy cost per swat.",
+	"energy": "Raises maximum energy and speeds up passive energy regeneration.",
+}
+
 var game_timer := 0.0
 var market_day := 1
 var difficulty_level := 1
@@ -496,6 +502,7 @@ func _build_upgrade_panel() -> void:
 		var cost_label: Label = hud_layer.get_node("UpgradePanel/" + node_name + "Cost")
 		_prepare_icon_button(scene_button)
 		_prepare_cost_label(cost_label)
+		scene_button.tooltip_text = upgrade_descriptions.get(upgrade_name, "")
 		scene_button.pressed.connect(_on_upgrade_pressed.bind(upgrade_name))
 		upgrade_buttons[upgrade_name] = scene_button
 		upgrade_cost_labels[upgrade_name] = cost_label
