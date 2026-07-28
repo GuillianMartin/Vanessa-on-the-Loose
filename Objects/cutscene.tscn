@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://cw4gcxh3ycr2m"]
+
+[ext_resource type="VideoStream" uid="uid://crp0nncjd5mrf" path="res://assets/cutscene/vanessa_cutscene.ogv" id="1_1xt8y"]
+[ext_resource type="Script" uid="uid://b420637qaxd4r" path="res://Objects/cutscene.gd" id="2_ev71y"]
+
+[node name="CutscenePlayer" type="VideoStreamPlayer" unique_id=328126985]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stream = ExtResource("1_1xt8y")
+autoplay = true
+expand = true
+script = ExtResource("2_ev71y")

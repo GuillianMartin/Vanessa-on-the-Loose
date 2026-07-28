@@ -34,6 +34,8 @@ const HOME_BUTTON_TEXTURE := preload("res://assets/buttons/home_button.png")
 const PIXELIFY_FONT := preload("res://assets/font/PixelifySans.ttf")
 const JERSEY_FONT := preload("res://assets/font/Jersey10.ttf")
 
+@export var start_run_on_ready := true
+
 const BASE_FOOD_COUNT := 8
 const TOP_SAFE_AREA := 72.0
 const EDGE_PADDING := 30.0
@@ -129,6 +131,7 @@ var rush_check_timer := 0.0
 var current_day_report := {}
 var next_day_forecast := {}
 var prepared_restock_plan := {}
+var day_uses_prepared_restock_plan := false
 var bankruptcy_strike_forecast_day := -1
 var restock_costs_prepaid := false
 
@@ -237,7 +240,10 @@ func _ready() -> void:
 	_build_swatter()
 	_build_hud()
 	_build_menu()
-	_show_start_menu()
+	if start_run_on_ready:
+		_start_new_run()
+	else:
+		_show_start_menu()
 
 func _process(delta: float) -> void:
 	_update_big_fan_effect(delta)
@@ -1230,13 +1236,15 @@ func _on_pause_quit_pressed() -> void:
 	await _play_bouncy_pop(pause_quit_button, true)
 	pause_quit_button.disabled = false
 	_set_gameplay_paused(false)
-	_show_start_menu()
+	SceneFlow.go_to_main_menu()
 
 func _on_menu_button_pressed() -> void:
 	if result_transition_active:
 		return
 
 	match menu_state:
+		"starting_day_report":
+			_play_start_day_button_animation()
 		"day_end_summary":
 			_play_forecast_transition()
 		"pre_day_forecast":
@@ -1293,26 +1301,34 @@ func _start_new_run() -> void:
 	total_customers_served = 0
 	if swatter_entity != null and swatter_entity.has_method("reset_upgrades"):
 		swatter_entity.call("reset_upgrades")
-	_start_day()
+	_start_day(true)
 
-func _start_day() -> void:
+func _start_day(show_starting_report := false) -> void:
 	if boss_round_pending and not boss_warning_shown:
 		_show_boss_warning_screen()
 		return
 
+	_prepare_day()
+	if show_starting_report:
+		_show_starting_day_report_screen()
+		return
+
+	_begin_prepared_day()
+
+func _prepare_day() -> void:
 	var starting_boss_round := boss_round_pending
-	var used_prepared_restock_plan := not starting_boss_round and _has_prepared_restock_plan(market_day)
+	day_uses_prepared_restock_plan = not starting_boss_round and _has_prepared_restock_plan(market_day)
 	boss_round_active = starting_boss_round
 	active_market_event = MARKET_PROGRESSION.get_market_event(market_day)
 	difficulty_level = MARKET_PROGRESSION.get_difficulty_level(market_day)
-	if used_prepared_restock_plan:
+	if day_uses_prepared_restock_plan:
 		active_market_event = prepared_restock_plan["market_event"] as Dictionary
 		daily_price_roll = float(prepared_restock_plan["daily_price_roll"])
 		current_money = int(next_day_forecast.get("final_starting_capital", current_money))
 	else:
 		daily_price_roll = MARKET_PROGRESSION.get_daily_price_roll()
 	is_bankrupt = current_money < 0
-	restock_costs_prepaid = used_prepared_restock_plan or boss_round_active
+	restock_costs_prepaid = day_uses_prepared_restock_plan or boss_round_active
 	day_money_start = current_money
 	day_gross_sales = 0
 	day_money_earned = 0
@@ -1331,6 +1347,7 @@ func _start_day() -> void:
 	active_placed_food_records.clear()
 	customer_spawn_timer = _get_next_customer_spawn_time()
 
+func _begin_prepared_day() -> void:
 	swatter_entity.call("reset")
 	swatter_entity.call("set_day", market_day)
 	_reset_skill_state()
@@ -1351,8 +1368,9 @@ func _start_day() -> void:
 	_apply_market_visuals()
 	_update_hud()
 	_spawn_food()
-	if used_prepared_restock_plan:
+	if day_uses_prepared_restock_plan:
 		prepared_restock_plan = {}
+	day_uses_prepared_restock_plan = false
 	restock_costs_prepaid = false
 	_update_bankruptcy_state()
 	if day_active:
@@ -1492,6 +1510,38 @@ func generate_pre_day_forecast() -> Dictionary:
 		"is_bankruptcy_state": is_bankruptcy_state,
 		"bankruptcy_strikes": bankruptcy_strikes,
 	}
+
+func _show_starting_day_report_screen() -> void:
+	menu_state = "starting_day_report"
+	day_active = false
+	_set_swatter_active(false)
+	_set_boss_health_visible(false)
+	menu_layer.visible = true
+	hud_layer.visible = false
+	if pause_button:
+		pause_button.visible = false
+	food_container.visible = false
+	fly_container.visible = false
+	customer_container.visible = false
+	_show_result_art_panel()
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
+
+	result_title_label.text = "Day %d Briefing" % market_day
+	result_body_label.text = "--- TODAY'S MARKET ---\nMarket: %s\nStarting Wallet: %s\nTime Limit: %s\nFood Stock: %d items\nFly Activity: %d flies\n\n--- GOAL ---\nProtect the food, serve customers, and finish the day with profit." % [
+		str(active_market_event.get("name", "Market")),
+		_format_peso(current_money),
+		_format_duration(game_timer),
+		_get_target_food_count(),
+		day_initial_flies,
+	]
+	result_warning_label.visible = false
+	_apply_result_text_fit(result_body_label.text, false)
+	financial_button.visible = false
+	financial_button.disabled = true
+	result_start_button.visible = true
+	result_start_button.disabled = false
+	_play_result_container_entrance()
 
 func _show_day_end_summary_screen(completed_market_day: int) -> void:
 	menu_state = "day_end_summary"
@@ -1671,12 +1721,13 @@ func _play_game_over_button_action() -> void:
 		game_over_home_button.disabled = false
 	result_transition_active = false
 	if game_over_action == "home":
-		_show_start_menu()
+		SceneFlow.go_to_main_menu()
 	else:
 		_start_new_run()
 
 func _play_start_day_button_animation() -> void:
 	result_transition_active = true
+	var starting_report := menu_state == "starting_day_report"
 	if result_start_button:
 		result_start_button.disabled = true
 	if result_board:
@@ -1684,7 +1735,10 @@ func _play_start_day_button_animation() -> void:
 	if result_start_button:
 		result_start_button.disabled = false
 	result_transition_active = false
-	_start_day()
+	if starting_report:
+		_begin_prepared_day()
+	else:
+		_start_day()
 
 func _play_enter_boss_button_animation() -> void:
 	result_transition_active = true
@@ -1894,6 +1948,12 @@ func _hide_skill_effect(skill_id: String) -> void:
 
 func _format_peso(amount: int) -> String:
 	return "₱%d" % amount
+
+func _format_duration(seconds: float) -> String:
+	var total_seconds := int(round(seconds))
+	var minutes := int(total_seconds / 60)
+	var remaining_seconds := total_seconds % 60
+	return "%d:%02d" % [minutes, remaining_seconds]
 
 func _report_int(report: Dictionary, key: String) -> int:
 	return int(report.get(key, 0))

@@ -48,4 +48,25 @@ var Customers := {
 		Vector2(1.5, 1.5),
         "res://assets/Sound Effects/customer_sound/ouch3.mp3"
 	),
+	"buff": create_customer_asset(
+		"res://assets/customer/buff_customer/hand_default.png",
+		"res://assets/customer/buff_customer/hand_damage.png",
+		"res://assets/customer/buff_customer/hand_close.png",
+		Vector2(1.5, 1.5),
+		"res://assets/Sound Effects/customer_sound/ouch1.mp3"
+	),
+	"hairy": create_customer_asset(
+		"res://assets/customer/hairy_customer/hand_default.png",
+		"res://assets/customer/hairy_customer/hand_damage.png",
+		"res://assets/customer/hairy_customer/hand_close.png",
+		Vector2(1.5, 1.5),
+		"res://assets/Sound Effects/customer_sound/ouch2.mp3"
+	),
+	"stout": create_customer_asset(
+		"res://assets/customer/stout_customer/hand_default.png",
+		"res://assets/customer/stout_customer/hand_damage.png",
+		"res://assets/customer/stout_customer/hand_close.png",
+		Vector2(1.5, 1.5),
+		"res://assets/Sound Effects/customer_sound/ouch3.mp3"
+	),
 }

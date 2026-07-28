@@ -227,6 +227,7 @@ var health_bar: ProgressBar
 @onready var sfx_fly_kill: AudioStreamPlayer2D = get_parent().get_parent().get_node_or_null("sfx_fly_kill") as AudioStreamPlayer2D
 
 var sfx_loop: AudioStreamPlayer2D
+var spawn_sfx_played := false
 
 func _ready() -> void:
 	input_pickable = true
@@ -290,7 +291,8 @@ func _apply_behavior() -> void:
 	var sound: AudioStream = FLY_LOOP_SFX.get(behavior.name, DEFAULT_LOOP_SFX)
 	if sfx_loop.stream != sound:
 		sfx_loop.stream = sound
-	if not sfx_loop.playing:
+	if not spawn_sfx_played:
+		spawn_sfx_played = true
 		sfx_loop.play(randf_range(1.0, 3.0))
 
 func _setup_health_bar() -> void:
@@ -306,12 +308,7 @@ func _ensure_loop_sfx() -> void:
 	if sfx_loop == null:
 		sfx_loop = AudioStreamPlayer2D.new()
 		sfx_loop.name = "sfx_loop"
-		sfx_loop.finished.connect(_on_loop_finished)
 		add_child(sfx_loop)
-
-func _on_loop_finished() -> void:
-	if sfx_loop != null and is_instance_valid(sfx_loop):
-		sfx_loop.play(randf_range(1.0, 3.0))
 
 func _process(delta: float) -> void:
 	if is_dying:
