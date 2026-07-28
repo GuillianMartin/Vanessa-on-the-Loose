@@ -11,12 +11,8 @@ config_version=5
 [application]
 
 config/name="bangaw"
-run/main_scene="res://Objects/main_menu.tscn"
+run/main_scene="uid://dmqryojkyoclc"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-
-[autoload]
-
-SceneFlow="*res://Backend/SceneFlow.gd"
 
 [display]
 
