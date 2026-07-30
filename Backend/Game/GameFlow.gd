@@ -186,6 +186,7 @@ func play_forecast_transition() -> void:
 	if game.financial_button:
 		game.financial_button.visible = false
 
+	AudioManager.play_book_flip()
 	for frame_index in range(GameConfig.RESULT_FLIP_FRAME_COUNT):
 		game.result_texture_rect.texture = game._get_result_flip_frame(frame_index)
 		await game.get_tree().create_timer(1.0 / GameConfig.RESULT_FLIP_FPS).timeout

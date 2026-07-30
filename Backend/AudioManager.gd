@@ -1,12 +1,17 @@
 extends Node
 
 const UI_BUTTON_SFX_PATH := "res://assets/Sound Effects/sound_fx/ui_button.mp3"
+const BOOK_FLIP_SFX_PATH := "res://assets/Sound Effects/sound_fx/book_flip.mp3"
 
 var ui_button := UI_BUTTON_SFX_PATH
+var book_flip := BOOK_FLIP_SFX_PATH
 var _stream_cache := {}
 
 func play_ui_button() -> void:
 	play_sfx_path(ui_button)
+
+func play_book_flip() -> void:
+	play_sfx_path(book_flip)
 
 func play_sfx_path(path: String) -> void:
 	play_sfx(_get_mp3_stream(path))
