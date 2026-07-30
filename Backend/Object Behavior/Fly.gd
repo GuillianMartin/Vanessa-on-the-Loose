@@ -5,7 +5,7 @@ extends Area2D
 signal died(fly: Area2D)
 signal spawn_requested(position: Vector2, behavior_name: String)
 
-const FLY_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/Fly_Attirbutes.gd")
+const FLY_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/Fly_Attributes.gd")
 const FLY_EGG_SCRIPT := preload("res://Backend/Object Initialization/FlyEgg.gd")
 
 const KILL_SPRITE_TEXTURE := preload("res://assets/effects/fly_kill.png")

@@ -7,7 +7,7 @@ signal shockwave_released(origin: Vector2)
 signal guard_blink_requested
 signal guard_protect_requested(active: bool)
 
-const BOSS_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/BossFly_Attritbutes.gd")
+const BOSS_ATTRIBUTES_SCRIPT := preload("res://Backend/Object Initialization/BossFly_Attributes.gd")
 const FLY_SCRIPT := preload("res://Backend/Object Behavior/Fly.gd")
 const FLY_EGG_SCRIPT := preload("res://Backend/Object Initialization/FlyEgg.gd")
 const EGG_FOOD_GROUP := "fly_eggs"

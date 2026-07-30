@@ -132,7 +132,7 @@ var Foods := {
 			"notgood": FoodAsset.new(load("res://assets/Foods/Fruits/banana/notgood.png"), 1),
 			"critical": FoodAsset.new(load("res://assets/Foods/Fruits/banana/critical.png"), 5),
 			"attributes": create_food_attributes(
-				"Mango",
+				"Banana",
 				96.0 * FOOD_SIZE_MULT,
 				48.0 * FOOD_SIZE_MULT,
 				88.0,
@@ -176,9 +176,9 @@ var Foods := {
 		},
 		{
 			"name": "Chicken",
-			"default": FoodAsset.new(load("res://assets/Foods/Meat/Chicken/default.png"), 1),
-			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/Chicken/notgood.png"), 1),
-			"critical": FoodAsset.new(load("res://assets/Foods/Meat/Chicken/critical.png"), 5),
+			"default": FoodAsset.new(load("res://assets/Foods/Meat/chicken/default.png"), 1),
+			"notgood": FoodAsset.new(load("res://assets/Foods/Meat/chicken/notgood.png"), 1),
+			"critical": FoodAsset.new(load("res://assets/Foods/Meat/chicken/critical.png"), 5),
 			"attributes": create_food_attributes(
 				"Chicken",
 				96.0 * FOOD_SIZE_MULT,
