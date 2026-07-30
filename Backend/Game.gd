@@ -33,6 +33,10 @@ const TRY_AGAIN_BUTTON_TEXTURE := preload("res://assets/buttons/try_again.png")
 const HOME_BUTTON_TEXTURE := preload("res://assets/buttons/home_button.png")
 const PIXELIFY_FONT := preload("res://assets/font/PixelifySans.ttf")
 const JERSEY_FONT := preload("res://assets/font/Jersey10.ttf")
+const BOOK_POP_SFX_PATH := "res://assets/Sound Effects/sound_fx/book_pop.mp3"
+const BOOK_FLIP_SFX_PATH := "res://assets/Sound Effects/sound_fx/book_flip.mp3"
+const DOOR_SHUT_SFX_PATH := "res://assets/Sound Effects/sound_fx/door_shut.mp3"
+const BOSS_WARNING_SFX_PATH := "res://assets/Sound Effects/sound_fx/boss_warning.mp3"
 
 @export var start_run_on_ready := true
 
@@ -350,6 +354,13 @@ func _build_sfx_players() -> void:
 	sfx_fly_kill.stream = load("res://assets/Sound Effects/sound_fx/fly_kill.mp3")
 	add_child(sfx_fly_kill)
 
+func _connect_button_sfx(button: BaseButton) -> void:
+	if button == null:
+		return
+	var ui_button_callable := Callable(AudioManager, "play_ui_button")
+	if not button.pressed.is_connected(ui_button_callable):
+		button.pressed.connect(ui_button_callable)
+
 func _build_swatter() -> void:
 	swatter_entity = SWATTER_SCRIPT.new()
 	swatter_entity.name = "SwatterEnergy"
@@ -509,6 +520,7 @@ func _build_upgrade_panel() -> void:
 		_prepare_icon_button(scene_button)
 		_prepare_cost_label(cost_label)
 		scene_button.tooltip_text = upgrade_descriptions.get(upgrade_name, "")
+		_connect_button_sfx(scene_button)
 		scene_button.pressed.connect(_on_upgrade_pressed.bind(upgrade_name))
 		upgrade_buttons[upgrade_name] = scene_button
 		upgrade_cost_labels[upgrade_name] = cost_label
@@ -544,6 +556,7 @@ func _build_upgrade_panel() -> void:
 	for upgrade_name in ["damage", "speed", "energy"]:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(96, 72)
+		_connect_button_sfx(button)
 		button.pressed.connect(_on_upgrade_pressed.bind(upgrade_name))
 		button.expand_icon = true
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -578,6 +591,7 @@ func _build_skill_panel() -> void:
 		_prepare_icon_button(scene_button)
 		_prepare_cost_label(cost_label)
 		_create_skill_effect_overlay(skill_id, scene_button)
+		_connect_button_sfx(scene_button)
 		scene_button.pressed.connect(_on_skill_pressed.bind(skill_id))
 		scene_button.tooltip_text = str(def.get("description", ""))
 		skill_buttons[skill_id] = scene_button
@@ -621,6 +635,7 @@ func _build_skill_panel() -> void:
 		var def: Dictionary = definitions[skill_id]
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(96, 72)
+		_connect_button_sfx(button)
 		button.pressed.connect(_on_skill_pressed.bind(skill_id))
 		button.expand_icon = true
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -700,12 +715,14 @@ func _build_big_fan_popup() -> void:
 	var left_btn := Button.new()
 	left_btn.text = "Left"
 	left_btn.custom_minimum_size = Vector2(120, 44)
+	_connect_button_sfx(left_btn)
 	left_btn.pressed.connect(_on_big_fan_choice.bind("left"))
 	btn_row.add_child(left_btn)
 
 	var right_btn := Button.new()
 	right_btn.text = "Right"
 	right_btn.custom_minimum_size = Vector2(120, 44)
+	_connect_button_sfx(right_btn)
 	right_btn.pressed.connect(_on_big_fan_choice.bind("right"))
 	btn_row.add_child(right_btn)
 
@@ -726,6 +743,7 @@ func _build_pause_ui() -> void:
 	pause_button.size = PAUSE_BUTTON_SIZE
 	pause_button.pivot_offset = PAUSE_BUTTON_SIZE * 0.5
 	pause_button.z_index = 50
+	_connect_button_sfx(pause_button)
 	pause_button.pressed.connect(_on_pause_pressed)
 	hud_layer.add_child(pause_button)
 
@@ -755,10 +773,12 @@ func _build_pause_ui() -> void:
 	center.add_child(pause_menu_box)
 
 	pause_quit_button = _make_pause_menu_button(QUIT_BUTTON_TEXTURE)
+	_connect_button_sfx(pause_quit_button)
 	pause_quit_button.pressed.connect(_on_pause_quit_pressed)
 	pause_menu_box.add_child(pause_quit_button)
 
 	pause_resume_button = _make_pause_menu_button(RESUME_BUTTON_TEXTURE)
+	_connect_button_sfx(pause_resume_button)
 	pause_resume_button.pressed.connect(_on_pause_resume_pressed)
 	pause_menu_box.add_child(pause_resume_button)
 
@@ -827,6 +847,7 @@ func _build_menu() -> void:
 	play_button = Button.new()
 	play_button.text = "Play"
 	play_button.custom_minimum_size = Vector2(190, 44)
+	_connect_button_sfx(play_button)
 	play_button.pressed.connect(_on_menu_button_pressed)
 	content.add_child(play_button)
 
@@ -846,6 +867,8 @@ func _build_result_art_menu() -> void:
 	result_warning_label = result_art_root.get_node("Center/Board/MotionRoot/TextMargin/Content/Warning")
 	financial_button = result_art_root.get_node("Center/Board/FinancialButton")
 	result_start_button = result_art_root.get_node("Center/Board/StartButton")
+	_connect_button_sfx(financial_button)
+	_connect_button_sfx(result_start_button)
 	financial_button.pressed.connect(_on_menu_button_pressed)
 	result_start_button.pressed.connect(_on_menu_button_pressed)
 	return
@@ -930,6 +953,7 @@ func _build_result_art_menu() -> void:
 	financial_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
 	financial_button.size = RESULT_BUTTON_FRAME_SIZE
 	financial_button.pivot_offset = RESULT_BUTTON_FRAME_SIZE * 0.5
+	_connect_button_sfx(financial_button)
 	financial_button.pressed.connect(_on_menu_button_pressed)
 	board.add_child(financial_button)
 
@@ -942,6 +966,7 @@ func _build_result_art_menu() -> void:
 	result_start_button.custom_minimum_size = RESULT_BUTTON_FRAME_SIZE
 	result_start_button.size = RESULT_BUTTON_FRAME_SIZE
 	result_start_button.pivot_offset = RESULT_BUTTON_FRAME_SIZE * 0.5
+	_connect_button_sfx(result_start_button)
 	result_start_button.pressed.connect(_on_menu_button_pressed)
 	result_start_button.visible = false
 	board.add_child(result_start_button)
@@ -992,6 +1017,7 @@ func _build_game_over_menu() -> void:
 	game_over_try_again_button.custom_minimum_size = GAME_OVER_BUTTON_FRAME_SIZE
 	game_over_try_again_button.size = GAME_OVER_BUTTON_FRAME_SIZE
 	game_over_try_again_button.pivot_offset = GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	_connect_button_sfx(game_over_try_again_button)
 	game_over_try_again_button.pressed.connect(_on_game_over_button_pressed.bind("try_again"))
 	game_over_root.add_child(game_over_try_again_button)
 
@@ -1004,6 +1030,7 @@ func _build_game_over_menu() -> void:
 	game_over_home_button.custom_minimum_size = GAME_OVER_BUTTON_FRAME_SIZE
 	game_over_home_button.size = GAME_OVER_BUTTON_FRAME_SIZE
 	game_over_home_button.pivot_offset = GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	_connect_button_sfx(game_over_home_button)
 	game_over_home_button.pressed.connect(_on_game_over_button_pressed.bind("home"))
 	game_over_root.add_child(game_over_home_button)
 
@@ -1100,6 +1127,7 @@ func _build_boss_warning_menu() -> void:
 	boss_warning_enter_button.custom_minimum_size = BOSS_WARNING_BUTTON_SIZE
 	boss_warning_enter_button.size = BOSS_WARNING_BUTTON_SIZE
 	boss_warning_enter_button.pivot_offset = BOSS_WARNING_BUTTON_SIZE * 0.5
+	_connect_button_sfx(boss_warning_enter_button)
 	boss_warning_enter_button.pressed.connect(_on_menu_button_pressed)
 	boss_warning_board.add_child(boss_warning_enter_button)
 
@@ -1645,6 +1673,7 @@ func _play_forecast_transition() -> void:
 	if financial_button:
 		financial_button.visible = false
 
+	AudioManager.play_sfx_path(BOOK_FLIP_SFX_PATH)
 	for frame_index in range(RESULT_FLIP_FRAME_COUNT):
 		result_texture_rect.texture = _get_result_flip_frame(frame_index)
 		await get_tree().create_timer(1.0 / RESULT_FLIP_FPS).timeout
@@ -1666,6 +1695,7 @@ func _animate_result_data_in() -> void:
 func _play_result_container_entrance() -> void:
 	if not result_board:
 		return
+	AudioManager.play_sfx_path(BOOK_POP_SFX_PATH)
 	result_board.scale = Vector2(1.65, 1.65)
 	var entrance_tween := create_tween()
 	entrance_tween.tween_property(result_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
@@ -1870,6 +1900,7 @@ func _play_boss_warning_intro() -> void:
 	shutter_tween.tween_property(boss_warning_top, "position", Vector2.ZERO, 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	shutter_tween.tween_property(boss_warning_bottom, "position", Vector2(0, BOSS_SHUTTER_HALF_SIZE.y), 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	await shutter_tween.finished
+	AudioManager.play_sfx_path(DOOR_SHUT_SFX_PATH)
 
 	var shake_tween := create_tween()
 	shake_tween.tween_property(boss_warning_root, "position", Vector2(8, 0), 0.035)
@@ -1879,6 +1910,7 @@ func _play_boss_warning_intro() -> void:
 	await shake_tween.finished
 
 	boss_warning_board.visible = true
+	AudioManager.play_sfx_path(BOSS_WARNING_SFX_PATH)
 	var board_tween := create_tween()
 	board_tween.set_parallel(true)
 	board_tween.tween_property(boss_warning_board, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

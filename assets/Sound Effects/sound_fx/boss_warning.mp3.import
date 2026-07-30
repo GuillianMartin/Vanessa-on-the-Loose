@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c6jl83id34oih"
+path="res://.godot/imported/boss_warning.mp3-e98a36a65f16fb7da65da93278002019.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/sound_fx/boss_warning.mp3"
+dest_files=["res://.godot/imported/boss_warning.mp3-e98a36a65f16fb7da65da93278002019.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
