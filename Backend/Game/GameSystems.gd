@@ -313,7 +313,7 @@ func activate_skill(skill_id: String, def: Dictionary) -> void:
 			game.big_fan_popup.visible = true
 			if game.swatter_sprite != null:
 				game.swatter_sprite.visible = false
-			game.Input.set_mouse_mode(game.Input.MOUSE_MODE_VISIBLE)
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 			return
 
 	var duration := float(def.get("duration", 0.0))
@@ -325,7 +325,7 @@ func on_big_fan_choice(side: String) -> void:
 	game.big_fan_choice = side
 	if game.swatter_sprite != null:
 		game.swatter_sprite.visible = true
-		game.Input.set_mouse_mode(game.Input.MOUSE_MODE_HIDDEN)
+		Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
 
 	var def: Dictionary = GameConfig.BUY_SKILLS.get_skill_definitions()["big_fan"]
 	activate_big_fan(side)

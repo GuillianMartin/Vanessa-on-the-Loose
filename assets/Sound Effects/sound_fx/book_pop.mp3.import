@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b0mex1pjtgnew"
+path="res://.godot/imported/book_pop.mp3-78721d5b68a7a6dc0becf23c29edf9db.mp3str"
+
+[deps]
+
+source_file="res://assets/Sound Effects/sound_fx/book_pop.mp3"
+dest_files=["res://.godot/imported/book_pop.mp3-78721d5b68a7a6dc0becf23c29edf9db.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

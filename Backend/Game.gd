@@ -7,6 +7,12 @@ const GameUI = preload("res://Backend/Game/GameUI.gd")
 const GameFlow = preload("res://Backend/Game/GameFlow.gd")
 const GameSystems = preload("res://Backend/Game/GameSystems.gd")
 
+const BOOK_POP_SFX_PATH := "res://assets/Sound Effects/sound_fx/book_pop.mp3"
+const BOOK_FLIP_SFX_PATH := "res://assets/Sound Effects/sound_fx/book_flip.mp3"
+const DOOR_SHUT_SFX_PATH := "res://assets/Sound Effects/sound_fx/door_shut.mp3"
+const BOSS_WARNING_SFX_PATH := "res://assets/Sound Effects/sound_fx/boss_warning.mp3"
+
+
 @export var start_run_on_ready := true
 
 var game_timer := 0.0
@@ -272,6 +278,13 @@ func _build_sfx_players() -> void:
 	sfx_fly_kill.stream = load("res://assets/Sound Effects/sound_fx/fly_kill.mp3")
 	add_child(sfx_fly_kill)
 
+func _connect_button_sfx(button: BaseButton) -> void:
+	if button == null:
+		return
+	var ui_button_callable := Callable(AudioManager, "play_ui_button")
+	if not button.pressed.is_connected(ui_button_callable):
+		button.pressed.connect(ui_button_callable)
+
 func _build_swatter() -> void:
 	swatter_entity = GameConfig.SWATTER_SCRIPT.new()
 	swatter_entity.name = "SwatterEnergy"
@@ -342,6 +355,489 @@ func _get_stock_cost_for_config(config, day: int, event: Dictionary, price_roll:
 	var category: String = config.category
 	var market_multiplier := GameConfig.MARKET_PROGRESSION.get_market_price_multiplier(day, price_roll, event, category)
 	return int(ceilf(float(config.base_market_price) * market_multiplier))
+
+func generate_day_end_report() -> Dictionary:
+	return {
+		"gross_sales": day_gross_sales,
+		"leftover_stock_value": day_leftover_earned,
+		"customers_served": day_customers_served,
+		"market_reputation": reputation,
+		"market_reputation_change": reputation - day_reputation_start,
+		"flies_killed": day_flies_killed,
+		"fly_bounty_bonus": day_fly_reward,
+		"stock_costs": day_stock_spent,
+		"total_wallet_end_of_day": current_money,
+	}
+
+func generate_pre_day_forecast() -> Dictionary:
+	var restock_plan := _prepare_restock_plan(market_day)
+	prepared_restock_plan = restock_plan
+	var carried_over_wallet := current_money
+	var expected_restock_cost := int(restock_plan["expected_restock_cost"])
+	var final_starting_capital := carried_over_wallet - expected_restock_cost
+	var is_bankruptcy_state := final_starting_capital < 0
+	if is_bankruptcy_state and bankruptcy_strike_forecast_day != market_day:
+		bankruptcy_strikes += 1
+		bankruptcy_strike_forecast_day = market_day
+	is_bankrupt = is_bankruptcy_state
+	return {
+		"carried_over_wallet": carried_over_wallet,
+		"expected_restock_cost": expected_restock_cost,
+		"final_starting_capital": final_starting_capital,
+		"is_bankruptcy_state": is_bankruptcy_state,
+		"bankruptcy_strikes": bankruptcy_strikes,
+	}
+
+func _show_starting_day_report_screen() -> void:
+	menu_state = "starting_day_report"
+	day_active = false
+	_set_swatter_active(false)
+	_set_boss_health_visible(false)
+	menu_layer.visible = true
+	hud_layer.visible = false
+	if pause_button:
+		pause_button.visible = false
+	food_container.visible = false
+	fly_container.visible = false
+	customer_container.visible = false
+	ui.show_result_art_panel()
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
+
+	result_title_label.text = "Day %d Briefing" % market_day
+	result_body_label.text = "--- TODAY'S MARKET ---\nMarket: %s\nStarting Wallet: %s\nTime Limit: %s\nFood Stock: %d items\nFly Activity: %d flies\n\n--- GOAL ---\nProtect the food, serve customers, and finish the day with profit." % [
+		str(active_market_event.get("name", "Market")),
+		_format_peso(current_money),
+		_format_duration(game_timer),
+		_get_target_food_count(),
+		day_initial_flies,
+	]
+	result_warning_label.visible = false
+	_apply_result_text_fit(result_body_label.text, false)
+	financial_button.visible = false
+	financial_button.disabled = true
+	result_start_button.visible = true
+	result_start_button.disabled = false
+	_play_result_container_entrance()
+
+func _show_day_end_summary_screen(completed_market_day: int) -> void:
+	menu_state = "day_end_summary"
+	menu_layer.visible = true
+	hud_layer.visible = false
+	ui.show_result_art_panel()
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
+
+	result_title_label.text = "Day %d Complete" % completed_market_day
+	result_body_label.text = "--- TODAY'S PERFORMANCE ---\nCustomers Served: %d\nMarket Reputation: %d (%+d)\nFlies Swatted: %d\n\n--- FINANCIALS ---\nGross Sales: +%s\nLeftover Stock Sold: +%s\nFly Bounty: +%s\n(Minus) Stock Costs: -%s\nTotal End of Day Wallet: %s" % [
+		_report_int(current_day_report, "customers_served"),
+		_report_int(current_day_report, "market_reputation"),
+		_report_int(current_day_report, "market_reputation_change"),
+		_report_int(current_day_report, "flies_killed"),
+		_format_peso(_report_int(current_day_report, "gross_sales")),
+		_format_peso(_report_int(current_day_report, "leftover_stock_value")),
+		_format_peso(_report_int(current_day_report, "fly_bounty_bonus")),
+		_format_peso(_report_int(current_day_report, "stock_costs")),
+		_format_peso(_report_int(current_day_report, "total_wallet_end_of_day")),
+	]
+	result_warning_label.visible = false
+	_apply_result_text_fit(result_body_label.text, false)
+	financial_button.visible = true
+	financial_button.disabled = false
+	result_start_button.visible = false
+	_play_result_container_entrance()
+	play_button.text = "Next: Financial Forecast"
+
+func _show_pre_day_forecast_screen(animate_intro := false) -> void:
+	menu_state = "pre_day_forecast"
+	menu_layer.visible = true
+	hud_layer.visible = false
+	ui.show_result_art_panel()
+
+	result_title_label.text = "Day %d Forecast" % market_day
+	result_body_label.text = "--- TOMORROW'S FORECAST ---\nCarried Over Wallet: %s\nExpected Restock Cost: -%s\nStarting Capital for Tomorrow: %s" % [
+		_format_peso(_report_int(next_day_forecast, "carried_over_wallet")),
+		_format_peso(_report_int(next_day_forecast, "expected_restock_cost")),
+		_format_peso(_report_int(next_day_forecast, "final_starting_capital")),
+	]
+
+	if forecast_warning_label:
+		forecast_warning_label.visible = false
+		if bool(next_day_forecast.get("is_bankruptcy_state", false)):
+			var strike_count := int(next_day_forecast.get("bankruptcy_strikes", bankruptcy_strikes))
+			forecast_warning_label.text = "⚠️ WARNING: BANKRUPTCY IMMINENT! (Strike %d of %d)" % [strike_count, GameConfig.MAX_BANKRUPTCY_STRIKES]
+			forecast_warning_label.add_theme_color_override("font_color", Color(1.0, 0.12, 0.08))
+		else:
+			forecast_warning_label.text = "Finances Stable"
+			forecast_warning_label.add_theme_color_override("font_color", Color(0.18, 0.72, 0.30))
+
+	play_button.text = "Start Day %d" % market_day
+	if bool(next_day_forecast.get("is_bankruptcy_state", false)):
+		var strike_count := int(next_day_forecast.get("bankruptcy_strikes", bankruptcy_strikes))
+		result_warning_label.text = "WARNING: BANKRUPTCY IMMINENT! (Strike %d of %d)" % [strike_count, GameConfig.MAX_BANKRUPTCY_STRIKES]
+	else:
+		result_warning_label.text = "Finances Stable"
+	result_warning_label.add_theme_color_override("font_color", GameConfig.RESULT_TEXT_COLOR)
+	result_warning_label.visible = true
+	_apply_result_text_fit(result_body_label.text, true)
+	financial_button.visible = false
+	result_start_button.visible = true
+	if animate_intro:
+		_animate_result_data_in()
+
+func _apply_result_text_fit(body_text: String, has_warning: bool) -> void:
+	var body_lines := body_text.count("\n") + 1
+	var total_lines := body_lines + 1 + (1 if has_warning else 0)
+	var body_font_size := 18
+	if total_lines >= 12:
+		body_font_size = 15
+	elif total_lines >= 9:
+		body_font_size = 16
+	elif total_lines >= 6:
+		body_font_size = 18
+	else:
+		body_font_size = 20
+
+	var title_font_size := mini(body_font_size + 2, 20)
+	var separation := 5 if total_lines >= 9 else 8
+	result_content.add_theme_constant_override("separation", separation)
+	result_title_label.add_theme_font_size_override("font_size", title_font_size)
+	result_body_label.add_theme_font_size_override("font_size", body_font_size)
+	result_warning_label.add_theme_font_size_override("font_size", body_font_size)
+
+func _play_forecast_transition() -> void:
+	result_transition_active = true
+	if financial_button:
+		financial_button.disabled = true
+		await _play_bouncy_pop(financial_button)
+	if result_start_button:
+		result_start_button.visible = false
+
+	var fade_out := create_tween()
+	fade_out.set_parallel(true)
+	fade_out.tween_property(result_motion_root, "position", Vector2(0, -28), 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	fade_out.tween_property(result_motion_root, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await fade_out.finished
+
+	if financial_button:
+		financial_button.visible = false
+
+	AudioManager.play_sfx_path(BOOK_FLIP_SFX_PATH)
+	for frame_index in range(GameConfig.RESULT_FLIP_FRAME_COUNT):
+		result_texture_rect.texture = _get_result_flip_frame(frame_index)
+		await get_tree().create_timer(1.0 / GameConfig.RESULT_FLIP_FPS).timeout
+
+	result_texture_rect.texture = GameConfig.RESULT_CONTAINER_TEXTURE
+	_show_pre_day_forecast_screen(false)
+	await _animate_result_data_in()
+	result_transition_active = false
+
+func _animate_result_data_in() -> void:
+	result_motion_root.position = Vector2(0, 28)
+	result_motion_root.modulate.a = 0.0
+	var fade_in := create_tween()
+	fade_in.set_parallel(true)
+	fade_in.tween_property(result_motion_root, "position", Vector2.ZERO, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	fade_in.tween_property(result_motion_root, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await fade_in.finished
+
+func _play_result_container_entrance() -> void:
+	if not result_board:
+		return
+	AudioManager.play_sfx_path(BOOK_POP_SFX_PATH)
+	result_board.scale = Vector2(1.65, 1.65)
+	var entrance_tween := create_tween()
+	entrance_tween.tween_property(result_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	entrance_tween.tween_property(result_board, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _play_game_over_entrance() -> void:
+	if not game_over_root:
+		return
+
+	game_over_background.position = Vector2(0, GameConfig.GAME_OVER_FRAME_SIZE.y)
+	game_over_fly.position = Vector2(0, GameConfig.GAME_OVER_FRAME_SIZE.y)
+	game_over_data_label.position = GameConfig.GAME_OVER_DATA_POSITION + Vector2(0, 26)
+	game_over_data_label.modulate.a = 0.0
+	game_over_try_again_button.modulate.a = 0.0
+	game_over_home_button.modulate.a = 0.0
+	game_over_try_again_button.disabled = true
+	game_over_home_button.disabled = true
+
+	var background_tween := create_tween()
+	background_tween.tween_property(game_over_background, "position", Vector2.ZERO, 0.46).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+
+	var fly_tween := create_tween()
+	fly_tween.tween_interval(0.5)
+	fly_tween.tween_property(game_over_fly, "position", Vector2.ZERO, 0.48).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+	await fly_tween.finished
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	content_tween.tween_property(game_over_data_label, "position", GameConfig.GAME_OVER_DATA_POSITION, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_data_label, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_try_again_button, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	content_tween.tween_property(game_over_home_button, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await content_tween.finished
+	game_over_try_again_button.disabled = false
+	game_over_home_button.disabled = false
+
+func _on_game_over_button_pressed(action: String) -> void:
+	if result_transition_active:
+		return
+	game_over_action = action
+	_play_game_over_button_action()
+
+func _play_game_over_button_action() -> void:
+	result_transition_active = true
+	var target := game_over_try_again_button if game_over_action == "try_again" else game_over_home_button
+	if target:
+		target.disabled = true
+		await _play_bouncy_pop(target)
+	if game_over_try_again_button:
+		game_over_try_again_button.disabled = false
+	if game_over_home_button:
+		game_over_home_button.disabled = false
+	result_transition_active = false
+	if game_over_action == "home":
+		SceneFlow.go_to_main_menu()
+	else:
+		_start_new_run()
+
+func _play_start_day_button_animation() -> void:
+	result_transition_active = true
+	var starting_report := menu_state == "starting_day_report"
+	if result_start_button:
+		result_start_button.disabled = true
+	if result_board:
+		await _play_bouncy_pop(result_board)
+	if result_start_button:
+		result_start_button.disabled = false
+	result_transition_active = false
+	if starting_report:
+		_begin_prepared_day()
+	else:
+		_start_day()
+
+func _play_enter_boss_button_animation() -> void:
+	result_transition_active = true
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = true
+	await _play_boss_warning_exit()
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = false
+	boss_warning_shown = true
+	await _play_boss_start_countdown()
+	result_transition_active = false
+	_start_day()
+
+func _play_boss_warning_exit() -> void:
+	if boss_warning_root == null or boss_warning_top == null or boss_warning_bottom == null or boss_warning_board == null:
+		return
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	if boss_warning_content:
+		content_tween.tween_property(boss_warning_content, "position", GameConfig.BOSS_WARNING_TEXT_POSITION + Vector2(0, 34), 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		content_tween.tween_property(boss_warning_content, "modulate:a", 0.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if boss_warning_enter_button:
+		content_tween.tween_property(boss_warning_enter_button, "scale", Vector2(1.08, 1.08), 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_enter_button, "scale", Vector2.ZERO, 0.18).set_delay(0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		content_tween.tween_property(boss_warning_enter_button, "modulate:a", 0.0, 0.18).set_delay(0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await content_tween.finished
+
+	var board_tween := create_tween()
+	board_tween.set_parallel(true)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2(1.08, 1.08), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2.ZERO, 0.26).set_delay(0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	board_tween.tween_property(boss_warning_board, "modulate:a", 0.0, 0.22).set_delay(0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await board_tween.finished
+
+	var shutter_tween := create_tween()
+	shutter_tween.set_parallel(true)
+	shutter_tween.tween_property(boss_warning_top, "position", Vector2(0, -GameConfig.BOSS_SHUTTER_HALF_SIZE.y), 0.64).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	shutter_tween.tween_property(boss_warning_bottom, "position", Vector2(0, GameConfig.GAME_OVER_FRAME_SIZE.y), 0.64).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await shutter_tween.finished
+	boss_warning_root.visible = false
+
+func _play_boss_start_countdown() -> void:
+	if menu_layer == null:
+		return
+
+	var countdown_root := Control.new()
+	countdown_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	countdown_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	menu_layer.add_child(countdown_root)
+
+	var dimmer := ColorRect.new()
+	dimmer.color = Color(0.0, 0.0, 0.0, 0.38)
+	dimmer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	countdown_root.add_child(dimmer)
+
+	var word_label := Label.new()
+	word_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	word_label.size = GameConfig.GAME_CANVAS_SIZE
+	word_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	word_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	word_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	word_label.add_theme_font_override("font", GameConfig.JERSEY_FONT)
+	word_label.add_theme_font_size_override("font_size", GameConfig.BOSS_COUNTDOWN_FONT_SIZE)
+	word_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.75))
+	word_label.add_theme_constant_override("shadow_offset_x", 4)
+	word_label.add_theme_constant_override("shadow_offset_y", 4)
+	word_label.pivot_offset = GameConfig.GAME_CANVAS_SIZE * 0.5
+	countdown_root.add_child(word_label)
+
+	await _play_countdown_word(word_label, "READY", Color("#b0ed17"), false)
+	await _play_countdown_word(word_label, "SET", Color("#b0ed17"), false)
+	await _play_countdown_word(word_label, "SWAT", Color("#bd4a13"), true)
+
+	var fade_tween := create_tween()
+	fade_tween.tween_property(countdown_root, "modulate:a", 0.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await fade_tween.finished
+	countdown_root.queue_free()
+
+func _play_countdown_word(label: Label, word: String, color: Color, shake: bool) -> void:
+	label.text = word
+	label.add_theme_color_override("font_color", color)
+	label.position = Vector2.ZERO
+	label.scale = Vector2(0.2, 0.2)
+	label.modulate.a = 0.0
+
+	var pop_tween := create_tween()
+	pop_tween.set_parallel(true)
+	pop_tween.tween_property(label, "modulate:a", 1.0, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(label, "scale", Vector2(1.16, 1.16), 0.16).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	pop_tween.chain().tween_property(label, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await pop_tween.finished
+
+	if shake:
+		var shake_tween := create_tween()
+		shake_tween.tween_property(label, "position", Vector2(14, 0), 0.035)
+		shake_tween.tween_property(label, "position", Vector2(-12, 5), 0.035)
+		shake_tween.tween_property(label, "position", Vector2(8, -4), 0.035)
+		shake_tween.tween_property(label, "position", Vector2.ZERO, 0.05)
+		await shake_tween.finished
+
+	var out_tween := create_tween()
+	out_tween.tween_interval(0.18)
+	out_tween.tween_property(label, "modulate:a", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await out_tween.finished
+
+func _play_boss_warning_intro() -> void:
+	if boss_warning_root == null or boss_warning_top == null or boss_warning_bottom == null or boss_warning_board == null:
+		return
+
+	result_transition_active = true
+	boss_warning_root.position = Vector2.ZERO
+	boss_warning_top.position = Vector2(0, -GameConfig.BOSS_SHUTTER_HALF_SIZE.y)
+	boss_warning_bottom.position = Vector2(0, GameConfig.GAME_OVER_FRAME_SIZE.y)
+	boss_warning_board.visible = false
+	boss_warning_board.scale = Vector2(1.7, 1.7)
+	boss_warning_board.modulate.a = 0.0
+	if boss_warning_content:
+		boss_warning_content.position = GameConfig.BOSS_WARNING_TEXT_POSITION + Vector2(0, 30)
+		boss_warning_content.modulate.a = 0.0
+	if boss_warning_enter_button:
+		boss_warning_enter_button.position = GameConfig.BOSS_WARNING_BUTTON_POSITION + Vector2(0, 30)
+		boss_warning_enter_button.scale = Vector2.ONE
+		boss_warning_enter_button.modulate.a = 0.0
+		boss_warning_enter_button.disabled = true
+
+	var shutter_tween := create_tween()
+	shutter_tween.set_parallel(true)
+	shutter_tween.tween_property(boss_warning_top, "position", Vector2.ZERO, 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	shutter_tween.tween_property(boss_warning_bottom, "position", Vector2(0, GameConfig.BOSS_SHUTTER_HALF_SIZE.y), 0.86).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	await shutter_tween.finished
+	AudioManager.play_sfx_path(DOOR_SHUT_SFX_PATH)
+
+	var shake_tween := create_tween()
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(8, 0), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(-7, 3), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2(5, -2), 0.035)
+	shake_tween.tween_property(boss_warning_root, "position", Vector2.ZERO, 0.055)
+	await shake_tween.finished
+
+	boss_warning_board.visible = true
+	AudioManager.play_sfx_path(BOSS_WARNING_SFX_PATH)
+	var board_tween := create_tween()
+	board_tween.set_parallel(true)
+	board_tween.tween_property(boss_warning_board, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	board_tween.tween_property(boss_warning_board, "scale", Vector2(0.94, 0.94), 0.34).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	board_tween.chain().tween_property(boss_warning_board, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await board_tween.finished
+
+	var content_tween := create_tween()
+	content_tween.set_parallel(true)
+	if boss_warning_content:
+		content_tween.tween_property(boss_warning_content, "position", GameConfig.BOSS_WARNING_TEXT_POSITION, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_content, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if boss_warning_enter_button:
+		content_tween.tween_property(boss_warning_enter_button, "position", GameConfig.BOSS_WARNING_BUTTON_POSITION, 0.34).set_delay(0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		content_tween.tween_property(boss_warning_enter_button, "modulate:a", 1.0, 0.34).set_delay(0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await content_tween.finished
+	if boss_warning_enter_button:
+		boss_warning_enter_button.disabled = false
+	result_transition_active = false
+
+func _play_bouncy_pop(target: Control, process_during_pause: bool = false) -> void:
+	target.scale = Vector2.ONE
+	var pop_tween := create_tween()
+	if process_during_pause:
+		pop_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	pop_tween.tween_property(target, "scale", Vector2(1.08, 1.08), 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(target, "scale", Vector2(0.86, 0.86), 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	pop_tween.tween_property(target, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await pop_tween.finished
+
+func _play_control_bounce(target: Control) -> void:
+	if target == null:
+		return
+	target.scale = Vector2.ONE
+	var tween := create_tween()
+	tween.tween_property(target, "scale", Vector2(1.08, 1.08), 0.06).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(target, "scale", Vector2(0.92, 0.92), 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(target, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _play_skill_effect(skill_id: String) -> void:
+	var overlay := skill_effect_overlays.get(skill_id) as TextureRect
+	var atlas := skill_effect_textures.get(skill_id) as Texture2D
+	if overlay == null or atlas == null:
+		return
+	overlay.visible = true
+	overlay.modulate.a = 1.0
+	var frame_time := 1.0 / GameConfig.SKILL_EFFECT_FPS
+	var tween := create_tween()
+	for frame_index in range(GameConfig.SKILL_EFFECT_FRAME_COUNT):
+		tween.tween_callback(Callable(self, "_set_skill_effect_frame").bind(skill_id, frame_index))
+		tween.tween_interval(frame_time)
+	tween.tween_callback(Callable(self, "_hide_skill_effect").bind(skill_id))
+
+func _set_skill_effect_frame(skill_id: String, frame_index: int) -> void:
+	var overlay := skill_effect_overlays.get(skill_id) as TextureRect
+	var atlas := skill_effect_textures.get(skill_id) as Texture2D
+	if overlay == null or atlas == null:
+		return
+	overlay.texture = _get_atlas_frame(atlas, GameConfig.SKILL_EFFECT_FRAME_SIZE, frame_index)
+
+func _hide_skill_effect(skill_id: String) -> void:
+	var overlay := skill_effect_overlays.get(skill_id) as TextureRect
+	if overlay == null:
+		return
+	overlay.visible = false
+	overlay.texture = null
+
+func _format_peso(amount: int) -> String:
+	return "₱%d" % amount
+
+func _format_duration(seconds: float) -> String:
+	var total_seconds := int(round(seconds))
+	var minutes := int(total_seconds / 60)
+	var remaining_seconds := total_seconds % 60
+	return "%d:%02d" % [minutes, remaining_seconds]
+
+func _report_int(report: Dictionary, key: String) -> int:
+	return int(report.get(key, 0))
 
 func _prepare_restock_plan(day: int) -> Dictionary:
 	if _has_prepared_restock_plan(day):
@@ -610,13 +1106,11 @@ func _on_pause_quit_pressed() -> void:
 	await ui.play_bouncy_pop(pause_quit_button, true)
 	pause_quit_button.disabled = false
 	_set_gameplay_paused(false)
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	SceneFlow.go_to_main_menu()
 
 func _on_menu_button_pressed() -> void:
 	flow.on_menu_button_pressed()
-
-func _on_game_over_button_pressed(action: String) -> void:
-	flow.on_game_over_button_pressed(action)
 
 func _start_new_run() -> void:
 	flow.start_new_run()
@@ -635,15 +1129,6 @@ func _begin_prepared_day() -> void:
 
 func _show_boss_warning_screen() -> void:
 	ui.show_boss_warning_screen()
-
-func _show_starting_day_report_screen() -> void:
-	ui.show_starting_day_report_screen()
-
-func _show_day_end_summary_screen(completed_market_day: int) -> void:
-	ui.show_day_end_summary_screen(completed_market_day)
-
-func _show_pre_day_forecast_screen(animate_intro := false) -> void:
-	ui.show_pre_day_forecast_screen(animate_intro)
 
 func _show_game_over(reason: String) -> void:
 	day_active = false
@@ -692,38 +1177,6 @@ func _game_over_from_day_end(reason: String) -> void:
 func _update_bankruptcy_state() -> void:
 	pass
 
-func generate_day_end_report() -> Dictionary:
-	return {
-		"gross_sales": day_gross_sales,
-		"leftover_stock_value": day_leftover_earned,
-		"customers_served": day_customers_served,
-		"market_reputation": reputation,
-		"market_reputation_change": reputation - day_reputation_start,
-		"flies_killed": day_flies_killed,
-		"fly_bounty_bonus": day_fly_reward,
-		"stock_costs": day_stock_spent,
-		"total_wallet_end_of_day": current_money,
-	}
-
-func generate_pre_day_forecast() -> Dictionary:
-	var restock_plan := _prepare_restock_plan(market_day)
-	prepared_restock_plan = restock_plan
-	var carried_over_wallet := current_money
-	var expected_restock_cost := int(restock_plan["expected_restock_cost"])
-	var final_starting_capital := carried_over_wallet - expected_restock_cost
-	var is_bankruptcy_state := final_starting_capital < 0
-	if is_bankruptcy_state and bankruptcy_strike_forecast_day != market_day:
-		bankruptcy_strikes += 1
-		bankruptcy_strike_forecast_day = market_day
-	is_bankrupt = is_bankruptcy_state
-	return {
-		"carried_over_wallet": carried_over_wallet,
-		"expected_restock_cost": expected_restock_cost,
-		"final_starting_capital": final_starting_capital,
-		"is_bankruptcy_state": is_bankruptcy_state,
-		"bankruptcy_strikes": bankruptcy_strikes,
-	}
-
 func _sell_leftover_food() -> int:
 	if food_container == null:
 		return 0
@@ -765,15 +1218,12 @@ func _set_pause_button_pressed_frame(pressed_frame: bool) -> void:
 	pause_button.texture_pressed = frame
 
 func _set_swatter_active(active: bool) -> void:
-	if swatter_sprite == null:
-		return
-	swatter_sprite.visible = active
-	if active:
-		Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
-		swatter_sprite.global_position = get_viewport().get_mouse_position()
-		_show_default_swatter()
-	else:
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	if swatter_sprite != null:
+		swatter_sprite.visible = active
+		if active:
+			swatter_sprite.global_position = get_viewport().get_mouse_position()
+			_show_default_swatter()
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if active else Input.MOUSE_MODE_VISIBLE)
 
 func _show_default_swatter() -> void:
 	swatter_sprite.texture = GameConfig.SWATTER_DEFAULT_TEXTURE
@@ -938,85 +1388,6 @@ func _get_target_food_count() -> int:
 
 func _get_target_food_count_for_day(day: int) -> int:
 	return mini(GameConfig.BASE_FOOD_COUNT + int(floor(float(day - 1) / 6.0)), 8)
-
-func _format_peso(amount: int) -> String:
-	return "₱%d" % amount
-
-func _format_duration(seconds: float) -> String:
-	var total_seconds := int(round(seconds))
-	var minutes := int(total_seconds / 60)
-	var remaining_seconds := total_seconds % 60
-	return "%d:%02d" % [minutes, remaining_seconds]
-
-func _report_int(report: Dictionary, key: String) -> int:
-	return int(report.get(key, 0))
-
-func _apply_result_text_fit(body_text: String, has_warning: bool) -> void:
-	var body_lines := body_text.count("\n") + 1
-	var total_lines := body_lines + 1 + (1 if has_warning else 0)
-	var body_font_size := 18
-	if total_lines >= 12:
-		body_font_size = 15
-	elif total_lines >= 9:
-		body_font_size = 16
-	elif total_lines >= 6:
-		body_font_size = 18
-	else:
-		body_font_size = 20
-
-	var title_font_size := mini(body_font_size + 2, 20)
-	var separation := 5 if total_lines >= 9 else 8
-	result_content.add_theme_constant_override("separation", separation)
-	result_title_label.add_theme_font_size_override("font_size", title_font_size)
-	result_body_label.add_theme_font_size_override("font_size", body_font_size)
-	result_warning_label.add_theme_font_size_override("font_size", body_font_size)
-
-func _animate_result_data_in() -> void:
-	ui.animate_result_data_in()
-
-func _play_bouncy_pop(target: Control, process_during_pause: bool = false) -> void:
-	ui.play_bouncy_pop(target, process_during_pause)
-
-func _play_control_bounce(target: Control) -> void:
-	ui.play_control_bounce(target)
-
-func _play_start_day_button_animation() -> void:
-	flow.play_start_day_button_animation()
-
-func _play_enter_boss_button_animation() -> void:
-	flow.play_enter_boss_button_animation()
-
-func _play_boss_warning_intro() -> void:
-	flow.play_boss_warning_intro()
-
-func _play_boss_warning_exit() -> void:
-	flow.play_boss_warning_exit()
-
-func _play_boss_start_countdown() -> void:
-	flow.play_boss_start_countdown()
-
-func _play_game_over_button_action() -> void:
-	flow.on_game_over_button_pressed(game_over_action)
-
-func _play_result_container_entrance() -> void:
-	ui.play_result_container_entrance()
-
-func _play_game_over_entrance() -> void:
-	ui.play_game_over_entrance()
-
-func _set_skill_effect_frame(skill_id: String, frame_index: int) -> void:
-	var overlay := skill_effect_overlays.get(skill_id) as TextureRect
-	var atlas := skill_effect_textures.get(skill_id) as Texture2D
-	if overlay == null or atlas == null:
-		return
-	overlay.texture = ui.get_atlas_frame(atlas, GameConfig.SKILL_EFFECT_FRAME_SIZE, frame_index)
-
-func _hide_skill_effect(skill_id: String) -> void:
-	var overlay := skill_effect_overlays.get(skill_id) as TextureRect
-	if overlay == null:
-		return
-	overlay.visible = false
-	overlay.texture = null
 
 func _get_result_flip_frame(frame_index: int) -> AtlasTexture:
 	var texture := AtlasTexture.new()
