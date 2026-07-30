@@ -14,6 +14,7 @@ func _ready():
 	for button in button_container.get_children():
 		button.mouse_entered.connect(_on_any_button_hovered.bind(button))
 		button.mouse_exited.connect(_on_any_button_unhovered.bind(button))
+		button.pressed.connect(AudioManager.play_ui_button)
 		button.pressed.connect(_on_any_button_pressed.bind(button))		
 	
 	# Pop Up
@@ -23,6 +24,7 @@ func _ready():
 		if exit_btn != null:
 			exit_btn.mouse_entered.connect(_on_popup_btn_hovered.bind(exit_btn))
 			exit_btn.mouse_exited.connect(_on_popup_btn_unhovered.bind(exit_btn))
+			exit_btn.pressed.connect(AudioManager.play_ui_button)
 			exit_btn.pressed.connect(_on_popup_button_pressed.bind(popup_close))
 	
 	# Audio Settings
