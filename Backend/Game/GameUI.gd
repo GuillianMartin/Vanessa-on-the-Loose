@@ -59,6 +59,7 @@ func build_upgrade_panel() -> void:
 		_prepare_icon_button(scene_button)
 		_prepare_cost_label(cost_label)
 		scene_button.tooltip_text = GameConfig.upgrade_descriptions.get(upgrade_name, "")
+		game._connect_button_sfx(scene_button)
 		scene_button.pressed.connect(game._on_upgrade_pressed.bind(upgrade_name))
 		game.upgrade_buttons[upgrade_name] = scene_button
 		game.upgrade_cost_labels[upgrade_name] = cost_label
@@ -90,6 +91,7 @@ func build_skill_panel() -> void:
 		_prepare_icon_button(scene_button)
 		_prepare_cost_label(cost_label)
 		_create_skill_effect_overlay(skill_id, scene_button)
+		game._connect_button_sfx(scene_button)
 		scene_button.pressed.connect(game._on_skill_pressed.bind(skill_id))
 		scene_button.tooltip_text = str(def.get("description", ""))
 		game.skill_buttons[skill_id] = scene_button
@@ -165,12 +167,14 @@ func build_big_fan_popup() -> void:
 	var left_btn := Button.new()
 	left_btn.text = "Left"
 	left_btn.custom_minimum_size = Vector2(120, 44)
+	game._connect_button_sfx(left_btn)
 	left_btn.pressed.connect(game._on_big_fan_choice.bind("left"))
 	btn_row.add_child(left_btn)
 
 	var right_btn := Button.new()
 	right_btn.text = "Right"
 	right_btn.custom_minimum_size = Vector2(120, 44)
+	game._connect_button_sfx(right_btn)
 	right_btn.pressed.connect(game._on_big_fan_choice.bind("right"))
 	btn_row.add_child(right_btn)
 
@@ -191,6 +195,7 @@ func build_pause_ui() -> void:
 	game.pause_button.size = GameConfig.PAUSE_BUTTON_SIZE
 	game.pause_button.pivot_offset = GameConfig.PAUSE_BUTTON_SIZE * 0.5
 	game.pause_button.z_index = 50
+	game._connect_button_sfx(game.pause_button)
 	game.pause_button.pressed.connect(game._on_pause_pressed)
 	game.hud_layer.add_child(game.pause_button)
 
@@ -220,10 +225,12 @@ func build_pause_ui() -> void:
 	center.add_child(game.pause_menu_box)
 
 	game.pause_quit_button = _make_pause_menu_button(GameConfig.QUIT_BUTTON_TEXTURE)
+	game._connect_button_sfx(game.pause_quit_button)
 	game.pause_quit_button.pressed.connect(game._on_pause_quit_pressed)
 	game.pause_menu_box.add_child(game.pause_quit_button)
 
 	game.pause_resume_button = _make_pause_menu_button(GameConfig.RESUME_BUTTON_TEXTURE)
+	game._connect_button_sfx(game.pause_resume_button)
 	game.pause_resume_button.pressed.connect(game._on_pause_resume_pressed)
 	game.pause_menu_box.add_child(game.pause_resume_button)
 
@@ -292,6 +299,7 @@ func build_menu() -> void:
 	game.play_button = Button.new()
 	game.play_button.text = "Play"
 	game.play_button.custom_minimum_size = Vector2(190, 44)
+	game._connect_button_sfx(game.play_button)
 	game.play_button.pressed.connect(game._on_menu_button_pressed)
 	content.add_child(game.play_button)
 
@@ -311,6 +319,8 @@ func build_result_art_menu() -> void:
 	game.result_warning_label = game.result_art_root.get_node("Center/Board/MotionRoot/TextMargin/Content/Warning")
 	game.financial_button = game.result_art_root.get_node("Center/Board/FinancialButton")
 	game.result_start_button = game.result_art_root.get_node("Center/Board/StartButton")
+	game._connect_button_sfx(game.financial_button)
+	game._connect_button_sfx(game.result_start_button)
 	game.financial_button.pressed.connect(game._on_menu_button_pressed)
 	game.result_start_button.pressed.connect(game._on_menu_button_pressed)
 
@@ -360,6 +370,7 @@ func build_game_over_menu() -> void:
 	game.game_over_try_again_button.custom_minimum_size = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE
 	game.game_over_try_again_button.size = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE
 	game.game_over_try_again_button.pivot_offset = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	game._connect_button_sfx(game.game_over_try_again_button)
 	game.game_over_try_again_button.pressed.connect(game._on_game_over_button_pressed.bind("try_again"))
 	game.game_over_root.add_child(game.game_over_try_again_button)
 
@@ -372,6 +383,7 @@ func build_game_over_menu() -> void:
 	game.game_over_home_button.custom_minimum_size = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE
 	game.game_over_home_button.size = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE
 	game.game_over_home_button.pivot_offset = GameConfig.GAME_OVER_BUTTON_FRAME_SIZE * 0.5
+	game._connect_button_sfx(game.game_over_home_button)
 	game.game_over_home_button.pressed.connect(game._on_game_over_button_pressed.bind("home"))
 	game.game_over_root.add_child(game.game_over_home_button)
 
@@ -462,6 +474,7 @@ func build_boss_warning_menu() -> void:
 	game.boss_warning_enter_button.custom_minimum_size = GameConfig.BOSS_WARNING_BUTTON_SIZE
 	game.boss_warning_enter_button.size = GameConfig.BOSS_WARNING_BUTTON_SIZE
 	game.boss_warning_enter_button.pivot_offset = GameConfig.BOSS_WARNING_BUTTON_SIZE * 0.5
+	game._connect_button_sfx(game.boss_warning_enter_button)
 	game.boss_warning_enter_button.pressed.connect(game._on_menu_button_pressed)
 	game.boss_warning_board.add_child(game.boss_warning_enter_button)
 

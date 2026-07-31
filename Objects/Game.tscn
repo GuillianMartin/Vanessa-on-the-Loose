@@ -19,7 +19,6 @@
 script = ExtResource("1_qn0m5")
 
 [node name="BackgroundVegetable" type="Sprite2D" parent="." unique_id=862864444]
-visible = false
 z_index = -100
 texture_filter = 1
 position = Vector2(-8, -8)
@@ -45,20 +44,21 @@ scale = Vector2(1.0902394, 1.1942446)
 texture = ExtResource("6_x45di")
 centered = false
 
-[node name="BackgroundNight" type="Sprite2D" parent="." unique_id=232422487]
-z_index = -100
-texture_filter = 1
-position = Vector2(576, 320)
-scale = Vector2(1.1, 1.206)
-texture = ExtResource("5_n7kpe")
-
 [node name="BackgroundRainy" type="Sprite2D" parent="." unique_id=1107671579]
 visible = false
 z_index = -100
-position = Vector2(-82.000015, -4)
+position = Vector2(-27, -4)
 scale = Vector2(1.2, 1.2)
 texture = ExtResource("8_rainy")
 centered = false
+
+[node name="BackgroundNight" type="Sprite2D" parent="." unique_id=232422487]
+visible = false
+z_index = -100
+texture_filter = 1
+position = Vector2(575.99994, 320)
+scale = Vector2(1.1, 1.206)
+texture = ExtResource("5_n7kpe")
 
 [node name="Container" type="Area2D" parent="." unique_id=699358779]
 position = Vector2(585, 327)
@@ -66,7 +66,6 @@ scale = Vector2(0.6668572, 0.7371134)
 script = ExtResource("3_cf3yn")
 
 [node name="ContainerVegetable" type="Sprite2D" parent="Container" unique_id=1440347322]
-visible = false
 texture_filter = 1
 position = Vector2(-19.494345, 92.9624)
 scale = Vector2(2.5192807, 3.1788492)
@@ -81,7 +80,7 @@ texture = ExtResource("5_p8jku")
 
 [node name="ContainerRainy" type="Sprite2D" parent="Container" unique_id=1323731437]
 visible = false
-position = Vector2(-14.995722, 46.125874)
+position = Vector2(-14.995722, 5.4265747)
 scale = Vector2(1.585, 1.585)
 texture = ExtResource("9_rainy")
 
@@ -93,6 +92,7 @@ scale = Vector2(1.6238455, 1.3956833)
 texture = ExtResource("7_fvrtb")
 
 [node name="ContainerNight" type="Sprite2D" parent="Container" unique_id=1070993606]
+visible = false
 texture_filter = 1
 position = Vector2(-13.496159, -101.748276)
 scale = Vector2(1.6169411, 1.647004)
