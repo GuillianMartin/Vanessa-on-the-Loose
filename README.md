@@ -248,13 +248,6 @@ For the full project background, design goals, and developer notes, visit:
 
 👉 **[https://vanesa-on-the-loose-about.netlify.app/](https://vanesa-on-the-loose-about.netlify.app/)**
 
----
-
-## 📝 License
-
-*(Add your license here.)*
-
----
 
 <p align="center">
   Made with Godot • Vanes-on-the-Loose • bangaw
