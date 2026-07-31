@@ -1,5 +1,7 @@
 extends Control
 
+const GameConfig = preload("res://Backend/Game/GameConfig.gd")
+
 @onready var button_container = $Buttons
 @onready var popup_container = $PopUps
 
@@ -34,6 +36,89 @@ func _ready():
 	music_slider.value_changed.connect(_on_music_value_changed)
 	sfx_slider.value_changed.connect(_on_sfx_value_changed)
 	
+	_build_trophy_highscores()
+
+func _build_trophy_highscores() -> void:
+	var trophy_popup = popup_container.get_node("TrophyPopup")
+	var notebook_bg = trophy_popup.get_node("NotebookBG")
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "HighScoreScroll"
+	scroll.set_anchors_preset(Control.PRESET_CENTER)
+	scroll.offset_left = -360.0
+	scroll.offset_top = -120.0
+	scroll.offset_right = 360.0
+	scroll.offset_bottom = 180.0
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.95, 0.9, 0.8, 0.35)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_left = 4.0
+	bg.offset_top = 4.0
+	bg.offset_right = -4.0
+	bg.offset_bottom = -4.0
+	scroll.add_child(bg)
+
+	notebook_bg.add_child(scroll)
+	notebook_bg.move_child(scroll, 0)
+
+	var list := VBoxContainer.new()
+	list.name = "HighScoreList"
+	list.alignment = BoxContainer.ALIGNMENT_CENTER
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 12)
+	scroll.add_child(list)
+
+func _refresh_trophy_highscores() -> void:
+	var trophy_popup = popup_container.get_node("TrophyPopup")
+	var list = trophy_popup.get_node_or_null("NotebookBG/HighScoreScroll/HighScoreList")
+	if list == null:
+		return
+
+	for child in list.get_children():
+		child.queue_free()
+
+	var scores := GameConfig.HIGH_SCORE_MANAGER.get_top_10()
+
+	var title := Label.new()
+	title.text = "TOP 10 HIGH SCORES"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.custom_minimum_size = Vector2(420, 36)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_override("font", GameConfig.JERSEY_FONT)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color("#5D371E"))
+	list.add_child(title)
+
+	if scores.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No runs yet!"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.custom_minimum_size = Vector2(420, 28)
+		empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		empty_label.add_theme_font_override("font", GameConfig.PIXELIFY_FONT)
+		empty_label.add_theme_font_size_override("font_size", 20)
+		empty_label.add_theme_color_override("font_color", Color("#5D371E"))
+		list.add_child(empty_label)
+		return
+
+	for i in range(scores.size()):
+		var entry := scores[i]
+		var day := int(entry.get("day", 0))
+		var date := str(entry.get("date", ""))
+		var label := Label.new()
+		label.text = "#%d   Day %d   (%s)" % [i + 1, day, date]
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.custom_minimum_size = Vector2(420, 26)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.add_theme_font_override("font", GameConfig.PIXELIFY_FONT)
+		label.add_theme_font_size_override("font_size", 18)
+		label.add_theme_color_override("font_color", Color("#5D371E"))
+		list.add_child(label)
+
 func _on_any_button_hovered(button: Node):
 	var sprite = button.get_child(0)
 	
@@ -70,6 +155,7 @@ func _on_any_button_pressed(button: Node):
 	elif button.name == "AlmanacButton":
 		almanac_popup.show()
 	elif button.name == "TrophyButton":
+		_refresh_trophy_highscores()
 		trophy_popup.show()
 
 # PopUps

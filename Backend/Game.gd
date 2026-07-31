@@ -1141,6 +1141,7 @@ func _show_game_over(reason: String) -> void:
 	_clear_food()
 	_clear_customers()
 	menu_state = "game_over"
+	GameConfig.HIGH_SCORE_MANAGER.save_score(market_day)
 	menu_layer.visible = true
 	hud_layer.visible = false
 	ui.show_game_over_art_panel()

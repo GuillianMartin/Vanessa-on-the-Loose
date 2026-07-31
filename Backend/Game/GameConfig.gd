@@ -79,6 +79,7 @@ const SWATTER_SCRIPT := preload("res://Backend/Swatter.gd")
 const MARKET_PROGRESSION := preload("res://Backend/MarketProgression.gd")
 const REWARD_MANAGER := preload("res://Backend/RewardManager.gd")
 const BUY_SKILLS := preload("res://Backend/Buy_skills.gd")
+const HIGH_SCORE_MANAGER := preload("res://Backend/HighScoreManager.gd")
 
 const icon_paths := {
 	"damage": "res://assets/icon/Upgrades/damage.png",
